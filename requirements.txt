@@ -1,0 +1,10 @@
+fastapi==0.115.6
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+# Pillow 12 requires Python 3.10+. Pin the latest compatible release so the
+# project also runs with the system Python 3.9 supplied by older macOS setups.
+pillow==11.3.0
+img2pdf==0.5.1
+# PikePDF 10 requires Python 3.10+. Version 9 has the APIs used by this app
+# and provides wheels for Python 3.9.
+pikepdf==9.11.0

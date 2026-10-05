@@ -1,0 +1,34 @@
+CometForge 1.1.0 dependency notices
+
+Ghostscript 10.08.0, Copyright Artifex Software, Inc.
+Distributed under GNU Affero General Public License version 3 (AGPL-3.0).
+The full license is included beside the Ghostscript runtime.
+Upstream exact corresponding source:
+https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/tag/gs10080
+https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10080/ghostscript-10.08.0.tar.gz
+Homebrew macOS build recipe and patches:
+https://github.com/Homebrew/homebrew-core/blob/HEAD/Formula/g/ghostscript.rb
+The exact build recipe is included in licenses/dependencies in the macOS app.
+No commercial Ghostscript license is included.
+
+Python: Python Software Foundation License (included in the Python runtime).
+PyInstaller: GPL-2.0-or-later with bootloader exception.
+pywebview: BSD-3-Clause.
+PyObjC: MIT.
+FastAPI: MIT. Uvicorn: BSD-3-Clause. python-multipart: Apache-2.0.
+Pillow: HPND. img2pdf: LGPL-3.0. PikePDF: MPL-2.0, libqpdf: Apache-2.0.
+Dependency source references:
+https://github.com/josch/img2pdf/tree/0.5.1
+https://github.com/pikepdf/pikepdf/tree/v9.11.0
+https://github.com/qpdf/qpdf/tree/v12.2.0
+Additional library license texts are retained in bundled package metadata and
+the dependency license directory generated during packaging.
+
+Microsoft Edge WebView2 is a Microsoft runtime used on Windows. The installer
+checks availability and invokes the official Evergreen bootstrap installer if
+needed; this one dependency can require an Internet connection.
+https://developer.microsoft.com/microsoft-edge/webview2/
+Microsoft Visual C++ Redistributable is bundled for the Windows PDF engines;
+its setup may require administrator approval when the runtime is absent.
+
+These installers contain no update service or release API integration.
