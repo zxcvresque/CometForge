@@ -1,3 +1,5 @@
 # Install in the build environment; self-hosting only needs requirements.txt.
 pyinstaller==6.16.0
 pywebview==6.1
+# Cross-compiles the Windows GUI launcher; not installed on end-user machines.
+ziglang==0.15.1

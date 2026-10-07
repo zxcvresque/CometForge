@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import email
 import hashlib
+import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -85,6 +87,48 @@ def target_wheels():
     return [item[1] for item in resolved.values()]
 
 
+def build_native_launcher(destination: Path):
+    try:
+        import ziglang
+    except ImportError:
+        raise SystemExit("Install the Windows build compiler in your venv: pip install ziglang==0.15.1")
+    compiler = Path(ziglang.__file__).parent / ("zig.exe" if sys.platform == "win32" else "zig")
+    version_parts = [int(part) for part in __version__.split(".")]
+    file_version = ",".join(str(part) for part in (version_parts + [0])[:4])
+    environment = dict(os.environ, ZIG_GLOBAL_CACHE_DIR=str(BUILD / "zig-cache"),
+                       ZIG_LOCAL_CACHE_DIR=str(BUILD / "zig-local-cache"))
+    resource = "windows_launcher.rc"
+    if sys.platform == "darwin":
+        # Zig 0.15's automatic RC-tool bootstrap uses the host OS version.
+        # Building its official resource compiler for macOS 14 avoids newer
+        # macOS SDK linker incompatibilities; the emitted resource is Windows
+        # x64 COFF, compiled from the same .rc as on Windows/Linux.
+        zig_lib = compiler.parent / "lib"
+        resource_compiler = BUILD / "cometforge-resinator"
+        if not resource_compiler.is_file():
+            architecture = "aarch64" if platform.machine() == "arm64" else "x86_64"
+            subprocess.run([str(compiler), "build-exe", "-target", f"{architecture}-macos.14.0.0",
+                            "-O", "ReleaseFast", "-lc", "--dep", "aro",
+                            f"-Mroot={zig_lib / 'compiler' / 'resinator' / 'main.zig'}",
+                            f"-Maro={zig_lib / 'compiler' / 'aro' / 'aro.zig'}",
+                            f"-femit-bin={resource_compiler}"], cwd=ROOT, env=environment, check=True)
+        resource = str(BUILD / "native-launcher-resources.obj")
+        subprocess.run([str(resource_compiler), str(zig_lib), "/:auto-includes", "none",
+                        "/i", str(zig_lib / "libc" / "include" / "any-windows-any"),
+                        "/i", str(zig_lib / "libc" / "include" / "generic-mingw"),
+                        "/:target", "X64", "/:output-format", "coff",
+                        "/d", f'COMETFORGE_VERSION="{__version__}"',
+                        "/d", f"COMETFORGE_FILE_VERSION={file_version}",
+                        "/fo", resource, "windows_launcher.rc"],
+                       cwd=ROOT / "packaging", env=environment, check=True)
+    subprocess.run([str(compiler), "cc", "-target", "x86_64-windows-gnu", "-Os", "-s",
+                    "-municode", "-Wl,--subsystem,windows", "-Wall", "-Wextra", "-Werror",
+                    f'-DCOMETFORGE_VERSION="{__version__}"',
+                    f"-DCOMETFORGE_FILE_VERSION={file_version}",
+                    "windows_launcher.c", resource, "-lshell32", "-luser32",
+                    "-o", str(destination)], cwd=ROOT / "packaging", env=environment, check=True)
+
+
 def main():
     DOWNLOADS.mkdir(parents=True, exist_ok=True)
     BUILD.mkdir(parents=True, exist_ok=True)
@@ -120,11 +164,12 @@ def main():
     (runtime / "python313._pth").write_text("python313.zip\n.\nLib/site-packages\n..\nimport site\n", encoding="utf-8")
     app = BUILD / "app"
     app.mkdir(exist_ok=True)
-    for name in ("launcher.py", "version.py", "server.py", "README.md", "requirements.txt", "TEST_CASES.md"):
+    for name in ("launcher.py", "windows_app.py", "version.py", "server.py", "README.md", "requirements.txt", "TEST_CASES.md"):
         shutil.copy(ROOT / name, app / name)
     shutil.copytree(ROOT / "static", app / "static", dirs_exist_ok=True)
     shutil.copy(ROOT / "packaging" / "assets" / "CometForge.ico", app / "CometForge.ico")
     shutil.copy(ROOT / "packaging" / "LOGO.md", app / "LOGO.md")
+    build_native_launcher(app / "CometForge.exe")
     (app / "installed.json").write_text('{"version":"' + __version__ + '"}', encoding="utf-8")
     gs_installer = DOWNLOADS / "gs10080w64.exe"
     download("https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10080/gs10080w64.exe", gs_installer)

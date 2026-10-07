@@ -7,7 +7,7 @@
 <p align="center">Build. Compress. Split. Compare.<br />A local-first PDF toolkit for your desktop.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.0-6CD8B4?style=flat-square" alt="Version 1.1.0" />
+  <img src="https://img.shields.io/badge/version-1.1.1-6CD8B4?style=flat-square" alt="Version 1.1.1" />
   <img src="https://img.shields.io/badge/macOS-14%2B%20Apple%20silicon-ADD888?style=flat-square" alt="macOS 14+, Apple silicon" />
   <img src="https://img.shields.io/badge/Windows-10%2F11%20x64-768AD8?style=flat-square" alt="Windows 10/11 x64" />
   <img src="https://img.shields.io/badge/processing-local-CE79D9?style=flat-square" alt="Local processing" />
@@ -27,9 +27,11 @@
 
 ## Desktop app
 
-Download the DMG or EXE from [GitHub Releases](https://github.com/zxcvresque/CometForge/releases/latest).
+Download the [Windows 1.1.1 installer](https://github.com/zxcvresque/CometForge/releases/download/v1.1.1/CometForge-1.1.1-Windows-x64-Setup.exe) or [macOS 1.1.0 DMG](https://github.com/zxcvresque/CometForge/releases/download/v1.1.0/CometForge-1.1.0-macOS-arm64.dmg) from [GitHub Releases](https://github.com/zxcvresque/CometForge/releases).
 
 On **macOS**, open the DMG, drag CometForge to Applications, and launch it. On **Windows**, run the Setup EXE. Installed editions open in their own app window, not a browser.
+
+Windows uses a dedicated `CometForge.exe` with an embedded app icon and taskbar identity. PDF tools run invisibly; no command window is needed. After upgrading from 1.1.0, unpin the old taskbar item and pin the new CometForge shortcut once.
 
 Python and PDF libraries are bundled. Keep **Ghostscript** enabled in setup for Target-fit compression and comparison rendering. Windows setup also handles desktop runtime dependencies; installing WebView2 requires internet access if it is missing.
 

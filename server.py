@@ -65,6 +65,16 @@ def _fmt_mb(n: int) -> float:
     return round(n / MB, 2)
 
 
+def _run_pdf_tool(command, **options):
+    """Run native PDF tools without spawning a console on Windows."""
+    if sys.platform == "win32":
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = subprocess.SW_HIDE
+        options.update(creationflags=subprocess.CREATE_NO_WINDOW, startupinfo=startup)
+    return subprocess.run(command, capture_output=True, text=True, **options)
+
+
 def _find_ghostscript() -> Optional[str]:
     if os.environ.get("COMETFORGE_DISABLE_GHOSTSCRIPT") == "1":
         return None
@@ -717,7 +727,7 @@ def job_render(job_id: str, index: int, page: int,
                        f"-dFirstPage={page}", f"-dLastPage={page}",
                        f"-sOutputFile={temporary}", str(path)]
             try:
-                result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+                result = _run_pdf_tool(command, timeout=60)
                 if result.returncode != 0 or not temporary.is_file():
                     raise HTTPException(503, "Could not render this page. Use the PDF comparison instead.")
                 temporary.replace(destination)
@@ -881,7 +891,7 @@ def _ghostscript_target_fit(in_pdf: Path, out_pdf: Path, target_bytes: int, line
             str(in_pdf),
         ]
 
-        p = subprocess.run(cmd, capture_output=True, text=True)
+        p = _run_pdf_tool(cmd)
         if p.returncode != 0 or not tmp_out.exists():
             raise RuntimeError(
                 f"Ghostscript failed (dpi={res}, quality={quality_factor}). "

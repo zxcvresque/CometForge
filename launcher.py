@@ -84,6 +84,20 @@ a{color:#65d9b4}.muted{color:#aaa;font-size:13px}</style>
 </html>"""
 
 
+def configure_install(data: Path, ghostscript: bool) -> None:
+    """Upgrade dependency selection without losing the user's port/preferences."""
+    data.mkdir(parents=True, exist_ok=True)
+    settings_path = data / "settings.json"
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        if not isinstance(settings, dict):
+            settings = {}
+    except (OSError, ValueError):
+        settings = {}
+    settings["ghostscript"] = ghostscript
+    settings_path.write_text(json.dumps(settings), encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser", action="store_true", help="Open in the default browser")
@@ -94,7 +108,19 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=None,
                         help="Listen port (default: 5173, or the remembered desktop port)")
     parser.add_argument("--version", action="version", version=__version__)
+    parser.add_argument("--register-shortcuts", nargs="+", metavar="LINK", help=argparse.SUPPRESS)
+    parser.add_argument("--configure-install", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--ghostscript", choices=("enabled", "disabled"), help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.register_shortcuts:
+        from windows_app import register_shortcuts
+        register_shortcuts(args.register_shortcuts)
+        return 0
+    if args.configure_install:
+        if args.ghostscript is None:
+            parser.error("--configure-install requires --ghostscript enabled or disabled")
+        configure_install(support_dir(), args.ghostscript == "enabled")
+        return 0
     installed = bool(getattr(sys, "frozen", False) or (Path(__file__).parent / "installed.json").is_file())
     desktop = (installed or args.desktop) and not args.browser and not args.no_browser
     data = support_dir() if installed else Path(__file__).resolve().parent
@@ -135,10 +161,10 @@ def main() -> int:
     thread.start()
     wait_for_server(server, url)
     if desktop:
-        import webview
         if os.name == "nt":
-            import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("com.cometforge.desktop")
+            from windows_app import set_process_identity
+            set_process_identity()
+        import webview
         webview.settings["ALLOW_DOWNLOADS"] = True
         needs_setup = ("ghostscript" not in settings or args.setup) and not args.skip_setup
         class SetupAPI:
@@ -158,14 +184,17 @@ def main() -> int:
             width=560 if needs_setup else 1380, height=410 if needs_setup else 900,
             min_size=(500, 350) if needs_setup else (800, 600))
         if os.name == "nt":
-            def set_native_icon():
-                from System import Action
+            def set_native_identity():
+                from windows_app import set_window_identity
                 from System.Drawing import Icon
                 icon_file = resource_dir() / "CometForge.ico"
                 if icon_file.is_file():
-                    form = window.native
-                    form.Invoke(Action(lambda: setattr(form, "Icon", Icon(str(icon_file)))))
-            window.events.shown += set_native_icon
+                    window._cometforge_icon = Icon(str(icon_file))
+                    window.native.Icon = window._cometforge_icon
+                set_window_identity(window.native.Handle.ToInt64(), resource_dir())
+            # WinForms fires this synchronously on the UI thread before Show().
+            # Both the live icon and pin/relaunch identity are ready immediately.
+            window.events.before_show += set_native_identity
         try:
             webview_data = data / "webview"
             webview_data.mkdir(parents=True, exist_ok=True)

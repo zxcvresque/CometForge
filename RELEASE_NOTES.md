@@ -1,22 +1,21 @@
-# CometForge 1.1.0
+# CometForge 1.1.1
 
-A local-first PDF toolkit with a native desktop window on macOS and Windows.
+A Windows desktop fix for CometForge's local-first PDF toolkit.
 
-## Highlights
+## What's changed
 
-- Focused Sources, Export and Review workflow with macOS-inspired controls.
-- Quality-first compression with per-PDF size caps and final size validation after linearization.
-- Ordered, page-based splitting into the requested number of complete PDFs.
-- HD before/after comparison with a draggable divider, page navigation and adaptive rendering up to 576 DPI.
-- ZIP and folder import, natural name sorting, modified-date sorting and multi-file rearranging.
-- Per-part progress, actual output names and sizes, individual downloads and ZIP export.
-- Welcome tour, custom app icon/favicon and a comet flyby after a successful Forge.
+- Dedicated native `CometForge.exe` with embedded icons and a matching app, window and shortcut identity for taskbar pinning.
+- Ghostscript compression and comparison rendering run without command windows.
+- Updated Start-menu and desktop shortcuts launch the app directly.
+- Upgrades preserve existing application preferences.
+
+After upgrading from 1.1.0, unpin the old taskbar item and pin the new CometForge Start-menu shortcut once.
 
 ## Downloads
 
-- **macOS:** `CometForge-1.1.0-macOS-arm64.dmg` — macOS 14 or newer, Apple silicon.
-- **Windows:** `CometForge-1.1.0-Windows-x64-Setup.exe` — Windows 10/11, x64.
-- **Integrity:** `SHA256SUMS.txt` contains the installer checksums.
+- **Windows:** `CometForge-1.1.1-Windows-x64-Setup.exe` — Windows 10/11, x64.
+- **Integrity:** `SHA256SUMS-1.1.1-Windows.txt` contains the installer checksum.
+- **macOS:** unchanged; download the DMG from [v1.1.0](https://github.com/zxcvresque/CometForge/releases/tag/v1.1.0).
 
 Python and PDF dependencies are included. Ghostscript is offered enabled by default. Windows setup includes the Visual C++ runtime and installs WebView2 if missing; WebView2 installation can require internet access and Visual C++ installation can require administrator approval.
 

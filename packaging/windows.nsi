@@ -2,7 +2,7 @@ Unicode True
 !include "MUI2.nsh"
 !include "x64.nsh"
 !ifndef VERSION
-!define VERSION "1.1.0"
+!define VERSION "1.1.1"
 !endif
 !ifndef PAYLOAD
 !define PAYLOAD "build/windows"
@@ -15,7 +15,7 @@ InstallDir "$LOCALAPPDATA\Programs\CometForge"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 !define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_RUN "$INSTDIR\runtime\pythonw.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\CometForge.exe"
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchCometForge
 !define MUI_FINISHPAGE_RUN_TEXT "Open CometForge"
 !insertmacro MUI_PAGE_WELCOME
@@ -29,7 +29,7 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_LANGUAGE "English"
 
 Function LaunchCometForge
-  Exec '"$INSTDIR\runtime\pythonw.exe" "$INSTDIR\launcher.py" --desktop'
+  Exec '"$INSTDIR\CometForge.exe"'
 FunctionEnd
 
 Function .onInit
@@ -48,18 +48,23 @@ Section "CometForge and required Python/PDF dependencies" Core
   SetOutPath "$INSTDIR"
   File "THIRD_PARTY_NOTICES.txt"
   CreateDirectory "$LOCALAPPDATA\CometForge\data"
-  FileOpen $0 "$LOCALAPPDATA\CometForge\data\settings.json" w
-  FileWrite $0 '{$\"ghostscript$\":false}'
-  FileClose $0
+  ; Preserve the saved port and existing preferences during upgrades.
+  IfFileExists "$LOCALAPPDATA\CometForge\data\settings.json" preserve_settings
+    ExecWait '"$INSTDIR\runtime\pythonw.exe" "$INSTDIR\launcher.py" --configure-install --ghostscript disabled' $1
+  preserve_settings:
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\CometForge"
-  CreateShortcut "$SMPROGRAMS\CometForge\CometForge.lnk" "$INSTDIR\runtime\pythonw.exe" '"$INSTDIR\launcher.py" --desktop' "$INSTDIR\CometForge.ico"
-  CreateShortcut "$DESKTOP\CometForge.lnk" "$INSTDIR\runtime\pythonw.exe" '"$INSTDIR\launcher.py" --desktop' "$INSTDIR\CometForge.ico"
+  CreateShortcut "$SMPROGRAMS\CometForge\CometForge.lnk" "$INSTDIR\CometForge.exe" "" "$INSTDIR\CometForge.exe" 0
+  CreateShortcut "$DESKTOP\CometForge.lnk" "$INSTDIR\CometForge.exe" "" "$INSTDIR\CometForge.exe" 0
+  ExecWait '"$INSTDIR\runtime\pythonw.exe" "$INSTDIR\launcher.py" --register-shortcuts "$SMPROGRAMS\CometForge\CometForge.lnk" "$DESKTOP\CometForge.lnk"' $1
+  ${If} $1 != 0
+    MessageBox MB_ICONEXCLAMATION "CometForge shortcuts were created, but Windows could not register their taskbar identity ($1). Re-run setup to repair the shortcuts."
+  ${EndIf}
   CreateShortcut "$SMPROGRAMS\CometForge\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CometForge" "DisplayName" "CometForge ${VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CometForge" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CometForge" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CometForge" "DisplayIcon" "$INSTDIR\CometForge.ico"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CometForge" "DisplayIcon" "$INSTDIR\CometForge.exe,0"
 SectionEnd
 
 Section "Microsoft Visual C++ runtime (required for PDF engines)" VisualCpp
@@ -83,9 +88,7 @@ Section "Install Ghostscript (recommended for target-fit compression)" Ghostscri
   SetOutPath "$INSTDIR\ghostscript"
   File /r "${PAYLOAD}/ghostscript/*"
   CreateDirectory "$LOCALAPPDATA\CometForge\data"
-  FileOpen $0 "$LOCALAPPDATA\CometForge\data\settings.json" w
-  FileWrite $0 '{$\"ghostscript$\":true}'
-  FileClose $0
+  ExecWait '"$INSTDIR\runtime\pythonw.exe" "$INSTDIR\launcher.py" --configure-install --ghostscript enabled' $1
 SectionEnd
 
 Section "Microsoft WebView2 runtime (required if missing; Internet needed)" WebView

@@ -1,0 +1,42 @@
+#include <windows.h>
+#ifndef COMETFORGE_VERSION
+#define COMETFORGE_VERSION "1.1.1"
+#endif
+#ifndef COMETFORGE_FILE_VERSION
+#define COMETFORGE_FILE_VERSION 1,1,1,0
+#endif
+
+1 ICON "assets/CometForge.ico"
+1 RT_MANIFEST "windows_launcher.manifest"
+STRINGTABLE
+BEGIN
+  101 "CometForge"
+END
+
+1 VERSIONINFO
+ FILEVERSION COMETFORGE_FILE_VERSION
+ PRODUCTVERSION COMETFORGE_FILE_VERSION
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      VALUE "CompanyName", "Zxcvresque\0"
+      VALUE "FileDescription", "CometForge desktop application\0"
+      VALUE "FileVersion", COMETFORGE_VERSION "\0"
+      VALUE "InternalName", "CometForge\0"
+      VALUE "OriginalFilename", "CometForge.exe\0"
+      VALUE "ProductName", "CometForge\0"
+      VALUE "ProductVersion", COMETFORGE_VERSION "\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END
