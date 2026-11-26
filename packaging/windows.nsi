@@ -42,9 +42,9 @@ FunctionEnd
 Section "CometForge and required Python/PDF dependencies" Core
   SectionIn RO
   SetOutPath "$INSTDIR"
-  File /r "${PAYLOAD}/app/*"
+  File /r "${PAYLOAD}\app\*"
   SetOutPath "$INSTDIR\runtime"
-  File /r "${PAYLOAD}/runtime/*"
+  File /r "${PAYLOAD}\runtime\*"
   SetOutPath "$INSTDIR"
   File "THIRD_PARTY_NOTICES.txt"
   CreateDirectory "$LOCALAPPDATA\CometForge\data"
@@ -70,7 +70,7 @@ SectionEnd
 Section "Microsoft Visual C++ runtime (required for PDF engines)" VisualCpp
   SectionIn RO
   SetOutPath "$TEMP\CometForge-Setup"
-  File "${PAYLOAD}/ghostscript/vcredist_x64.exe"
+  File "${PAYLOAD}\ghostscript\vcredist_x64.exe"
   SetRegView 64
   ReadRegDWORD $0 HKLM "Software\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
   SetRegView 32
@@ -86,7 +86,7 @@ SectionEnd
 
 Section "Install Ghostscript (recommended for target-fit compression)" Ghostscript
   SetOutPath "$INSTDIR\ghostscript"
-  File /r "${PAYLOAD}/ghostscript/*"
+  File /r "${PAYLOAD}\ghostscript\*"
   CreateDirectory "$LOCALAPPDATA\CometForge\data"
   ExecWait '"$INSTDIR\runtime\pythonw.exe" "$INSTDIR\launcher.py" --configure-install --ghostscript enabled' $1
 SectionEnd
@@ -99,7 +99,7 @@ Section "Microsoft WebView2 runtime (required if missing; Internet needed)" WebV
   ${EndIf}
   ${If} $0 == ""
     SetOutPath "$TEMP\CometForge-Setup"
-    File "${PAYLOAD}/MicrosoftEdgeWebview2Setup.exe"
+    File "${PAYLOAD}\MicrosoftEdgeWebview2Setup.exe"
     ExecWait '"$TEMP\CometForge-Setup\MicrosoftEdgeWebview2Setup.exe" /silent /install' $1
     ${If} $1 != 0
       MessageBox MB_ICONEXCLAMATION "WebView2 setup failed ($1). Connect to the Internet and run the bundled WebView2 installer before opening CometForge."
