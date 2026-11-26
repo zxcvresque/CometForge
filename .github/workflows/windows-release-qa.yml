@@ -15,6 +15,10 @@ jobs:
   installed-app:
     runs-on: windows-latest
     timeout-minutes: 20
+    # GitHub only exposes unpublished release assets to identities with push
+    # access. This job downloads a draft for testing; it never publishes it.
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ inputs.release_tag }}
