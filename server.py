@@ -32,6 +32,16 @@ WORK_DIR = Path(os.environ.get("COMETFORGE_DATA_DIR", str(APP_DIR / "work")))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 
 MB = 1_000_000
+MM = 72 / 25.4
+# Dimensions are stored in portrait order; orientation is chosen separately.
+PAGE_SIZES_MM = {
+    "a0": (841, 1189), "a1": (594, 841), "a2": (420, 594),
+    "a3": (297, 420), "a4": (210, 297), "a5": (148, 210), "a6": (105, 148),
+    "b4": (250, 353), "b5": (176, 250), "letter": (215.9, 279.4),
+    "legal": (215.9, 355.6), "tabloid": (279.4, 431.8),
+    "executive": (184.15, 266.7), "photo4x6": (101.6, 152.4),
+    "photo5x7": (127, 177.8),
+}
 
 
 def _now() -> float:
@@ -188,12 +198,22 @@ def capabilities() -> dict:
 def _normalized_options(options: dict) -> dict:
     if not isinstance(options, dict):
         raise ValueError("Options must be a JSON object.")
+
+    def number(value, label, integer=False):
+        try:
+            result = int(value) if integer else float(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise ValueError(f"{label} must be a finite number.") from error
+        if not integer and not math.isfinite(result):
+            raise ValueError(f"{label} must be a finite number.")
+        return result
+
     mode = str(options.get("compress_mode", "targetfit")).strip().lower()
     if mode in {"none", "false", "0"}:
         mode = "off"
     if mode not in {"off", "lossless", "targetfit"}:
         raise ValueError("Unknown compression mode.")
-    target = float(options.get("target_mb", 20) or 20)
+    target = number(options.get("target_mb", 20), "Target")
     if not math.isfinite(target) or not 1 <= target <= 10000:
         raise ValueError("Target must be between 1 and 10000 MB.")
     split = options.get("split_count", options.get("split_parts", options.get("split_files", 1)))
@@ -201,14 +221,58 @@ def _normalized_options(options: dict) -> dict:
         split = 1
     if isinstance(split, bool):
         split = 5 if split else 1
-    split = int(split or 1)
-    dpi = int(options.get("dpi_fallback", 300) or 300)
+    split = number(split, "Page split count", integer=True)
+    dpi = number(options.get("dpi_fallback", 300), "Image DPI", integer=True)
     if not 1 <= split <= 10000 or not 36 <= dpi <= 2400:
         raise ValueError("Invalid page split count or image DPI.")
+    page_size = str(options.get("page_size", "original")).lower()
+    page_size = {"fit": "original", "us-letter": "letter", "us_letter": "letter"}.get(page_size, page_size)
+    if page_size != "original" and page_size not in PAGE_SIZES_MM:
+        raise ValueError("Unknown page size.")
+    orientation = str(options.get("orientation", "auto")).lower()
+    fit = str(options.get("fit", "contain")).lower()
+    margin = str(options.get("margin", "none")).lower()
+    if orientation not in {"auto", "portrait", "landscape"}:
+        raise ValueError("Unknown page orientation.")
+    if fit not in {"contain", "cover", "actual"}:
+        raise ValueError("Unknown page fit.")
+    if margin not in {"none", "small", "medium", "large", "custom"}:
+        raise ValueError("Unknown page margin.")
+    margin_mm = number(options.get("margin_mm", 10), "Custom margin")
+    if not math.isfinite(margin_mm) or not 0 <= margin_mm <= 100:
+        raise ValueError("Custom margin must be between 0 and 100 mm.")
+    effective_margin = {"none": 0, "small": 5, "medium": 10, "large": 20,
+                        "custom": margin_mm}[margin]
+    if page_size != "original" and 2 * effective_margin >= min(PAGE_SIZES_MM[page_size]):
+        raise ValueError("The margin leaves no room on the selected paper. Choose a smaller margin.")
+
+    def angle(value):
+        if isinstance(value, bool):
+            raise ValueError("Rotation must be a multiple of 90 degrees.")
+        degrees = number(value, "Rotation")
+        if degrees % 90:
+            raise ValueError("Rotation must be a multiple of 90 degrees.")
+        return int(degrees % 360)
+
+    source_rotations = options.get("source_rotations", [])
+    page_rotations = options.get("page_rotations", {})
+    if not isinstance(source_rotations, list) or len(source_rotations) > IMPORT_MAX_FILES:
+        raise ValueError("Source rotations must be a list in queue order.")
+    if not isinstance(page_rotations, dict) or len(page_rotations) > 100000:
+        raise ValueError("Page rotations must map page numbers to degrees.")
+    normalized_pages = {}
+    for key, value in page_rotations.items():
+        if not str(key).isdigit() or int(key) < 1:
+            raise ValueError("Page rotation numbers start at 1.")
+        normalized_pages[str(int(key))] = angle(value)
     return {"output_name": _safe_filename(str(options.get("output_name", "CometForge.pdf"))),
             "compress_mode": mode, "target_mb": target,
             "linearize": bool(options.get("linearize", False)), "split_count": split,
-            "dpi_fallback": dpi}
+            "dpi_fallback": dpi, "page_size": page_size, "orientation": orientation,
+            "fit": fit, "margin": margin, "margin_mm": margin_mm,
+            "rotation": angle(options.get("rotation", 0)),
+            "source_rotations": [angle(value) for value in source_rotations],
+            "page_rotations": normalized_pages}
 
 
 IMPORT_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".tif", ".tiff"}
@@ -247,7 +311,7 @@ def _expand_import(import_id: str, uploads: List[tuple[Path, str]]) -> List[dict
                          "path": str(destination)})
 
     for upload, display_name in uploads:
-        if upload.suffix == ".zip":
+        if upload.suffix.lower() == ".zip":
             with zipfile.ZipFile(upload) as archive:
                 supported = []
                 file_count = 0
@@ -283,7 +347,7 @@ def _expand_import(import_id: str, uploads: List[tuple[Path, str]]) -> List[dict
                         save_entry(handle, name, timestamp)
         else:
             with upload.open("rb") as handle:
-                save_entry(handle, display_name, int(_now() * 1000))
+                save_entry(handle, display_name, int(upload.stat().st_mtime * 1000))
     if not metadata:
         raise ValueError("No supported PDFs or images were found in this import.")
     return metadata
@@ -394,11 +458,12 @@ def _run_source(source_id: str, paths: List[Path], dpi: int) -> None:
     try:
         sources.set(source_id, stage="building")
         built = WORK_DIR / source_id / "built.pdf"
-        _build_pdf(paths, built, dpi_fallback=dpi,
-                   progress_cb=lambda value: sources.set(source_id, progress_build=value))
+        source_page_counts = _build_pdf(paths, built, dpi_fallback=dpi,
+                                       progress_cb=lambda value: sources.set(source_id, progress_build=value))
         with pikepdf.open(built) as document:
             page_count = len(document.pages)
-        sources.set(source_id, stage="ready", progress_build=100, page_count=page_count, built_path=str(built))
+        sources.set(source_id, stage="ready", progress_build=100, page_count=page_count,
+                    source_page_counts=source_page_counts, built_path=str(built))
     except Exception as error:
         sources.set(source_id, stage="error", error=str(error))
 
@@ -409,7 +474,7 @@ def source_status(source_id: str) -> dict:
     if not source:
         raise HTTPException(404, "Unknown or expired source.")
     sources.set(source_id, created_at=_now())
-    return {key: source.get(key) for key in ("stage", "progress_build", "page_count", "input_bytes", "error")}
+    return {key: source.get(key) for key in ("stage", "progress_build", "page_count", "source_page_counts", "input_bytes", "error")}
 
 
 def _ready_source(source_id: str) -> dict:
@@ -436,6 +501,7 @@ def _source_job(source_id: str, options: dict) -> dict:
             raise HTTPException(409, "Image DPI changed. Upload the queue again.")
         try:
             _page_ranges(source["page_count"], options["split_count"])
+            _validate_page_edits(options, source["page_count"], source.get("source_page_counts", []))
         except ValueError as error:
             raise HTTPException(400, str(error))
         key = hashlib.sha256(json.dumps(options, sort_keys=True).encode()).hexdigest()
@@ -451,7 +517,8 @@ def _source_job(source_id: str, options: dict) -> dict:
         cache[key] = jid
         sources.set(source_id, cache=cache, active_jobs=[*source.get("active_jobs", []), jid])
         jobs.set(jid, source_id=source_id)
-        threading.Thread(target=_run_job, args=(jid, [], options, Path(source["built_path"])), daemon=True).start()
+        threading.Thread(target=_run_job, args=(jid, [], options, Path(source["built_path"]),
+                                               source.get("source_page_counts", [])), daemon=True).start()
         return {"job_id": jid, "cached": False}
 
 
@@ -469,6 +536,7 @@ def preview_source(source_id: str, payload: dict = Body(...)) -> dict:
     if options["dpi_fallback"] != source["dpi_fallback"]:
         raise HTTPException(409, "Image DPI changed. Upload the queue again.")
     try:
+        _validate_page_edits(options, source["page_count"], source.get("source_page_counts", []))
         return _estimate_outputs(Path(source["built_path"]), options)
     except (ValueError, TypeError) as error:
         raise HTTPException(400, str(error))
@@ -754,23 +822,12 @@ def _image_layout(dpi_fallback: int):
     return layout_fun
 
 
-def _build_pdf(inputs: List[Path], out_pdf: Path, dpi_fallback: int = 300, progress_cb=None) -> None:
-    # Supports: PDFs (preserved) + raster images (losslessly wrapped via img2pdf)
-    pdf_inputs = [p for p in inputs if p.suffix.lower() == ".pdf"]
-    if not pdf_inputs and all(p.suffix.lower() in (".jpg", ".jpeg", ".png", ".tif", ".tiff") for p in inputs):
-        # fast path: all raster images -> one img2pdf call
-        if progress_cb:
-            progress_cb(10)
-        layout_fun = _image_layout(dpi_fallback)
-        pdf_bytes = img2pdf.convert([str(p) for p in inputs], layout_fun=layout_fun)
-        out_pdf.write_bytes(pdf_bytes)
-        if progress_cb:
-            progress_cb(100)
-        return
-
-    # Mixed path: stitch PDFs + single-image PDFs into one
+def _build_pdf(inputs: List[Path], out_pdf: Path, dpi_fallback: int = 300, progress_cb=None) -> List[int]:
+    # Build each input independently so multi-page PDFs/TIFFs retain their queue
+    # boundaries for source rotation. Raster data is still wrapped losslessly.
     dst = pikepdf.Pdf.new()
     n = len(inputs)
+    source_page_counts = []
 
     for i, p in enumerate(inputs):
         if progress_cb:
@@ -778,6 +835,7 @@ def _build_pdf(inputs: List[Path], out_pdf: Path, dpi_fallback: int = 300, progr
 
         if p.suffix.lower() == ".pdf":
             with pikepdf.open(p) as src:
+                source_page_counts.append(len(src.pages))
                 dst.pages.extend(src.pages)
             continue
 
@@ -788,12 +846,100 @@ def _build_pdf(inputs: List[Path], out_pdf: Path, dpi_fallback: int = 300, progr
         layout_fun = _image_layout(dpi_fallback)
         pdf_bytes = img2pdf.convert(str(p), layout_fun=layout_fun)
         with pikepdf.open(io.BytesIO(pdf_bytes)) as imgpdf:
+            source_page_counts.append(len(imgpdf.pages))
             dst.pages.extend(imgpdf.pages)
 
     dst.save(out_pdf)
     dst.close()
     if progress_cb:
         progress_cb(100)
+    return source_page_counts
+
+
+def _validate_page_edits(options: dict, page_count: int, source_page_counts: Sequence[int]) -> None:
+    if any(int(number) > page_count for number in options["page_rotations"]):
+        raise ValueError(f"Page rotation is outside this document ({page_count} pages).")
+    if options["source_rotations"] and len(options["source_rotations"]) != len(source_page_counts):
+        raise ValueError("Source rotations must match the number of queued files.")
+
+
+def _apply_page_layout(source_pdf: Path, destination: Path, options: dict,
+                       source_page_counts: Sequence[int]) -> bool:
+    """Apply edits to a private copy, preserving source PDFs and vector content.
+
+    Rotation-only exports keep the existing page objects and annotations. Paper
+    changes place page appearance as a vector Form XObject on white paper.
+    """
+    source_angles = options["source_rotations"]
+    page_angles = options["page_rotations"]
+    margin = {"none": 0, "small": 5, "medium": 10, "large": 20,
+              "custom": options["margin_mm"]}[options["margin"]] * MM
+    relayout = options["page_size"] != "original" or options["orientation"] != "auto" or margin > 0
+    rotate = options["rotation"] or any(source_angles) or any(page_angles.values())
+    with pikepdf.open(source_pdf) as document:
+        _validate_page_edits(options, len(document.pages), source_page_counts)
+        if not relayout and not rotate:
+            return False
+        angles = [0] * len(document.pages)
+        offset = 0
+        for index, count in enumerate(source_page_counts):
+            if source_angles:
+                angles[offset:offset + count] = [source_angles[index]] * count
+            offset += count
+        for index, page in enumerate(document.pages):
+            angle = (options["rotation"] + angles[index] + page_angles.get(str(index + 1), 0)) % 360
+            if angle:
+                page.rotate(angle, relative=True)
+        if not relayout:
+            document.save(destination)
+            return True
+        # Retain visible markup in resized pages. Rotation-only edits above keep
+        # annotations fully interactive; relayout produces print-ready pages.
+        document.generate_appearance_streams()
+        document.flatten_annotations()
+        result = pikepdf.Pdf.new()
+        for page in document.pages:
+            form = page.as_form_xobject()
+            box = [float(value) for value in form.BBox]
+            matrix = [float(value) for value in form.get("/Matrix", [1, 0, 0, 1, 0, 0])]
+            a, b, c, d, e, f = matrix
+            corners = [(a * x + c * y + e, b * x + d * y + f)
+                       for x in (box[0], box[2]) for y in (box[1], box[3])]
+            source_width = max(x for x, _ in corners) - min(x for x, _ in corners)
+            source_height = max(y for _, y in corners) - min(y for _, y in corners)
+            if not all(math.isfinite(value) and value > 0 for value in (source_width, source_height)):
+                raise ValueError("A source page has invalid dimensions.")
+            if options["page_size"] == "original":
+                width, height = source_width + 2 * margin, source_height + 2 * margin
+            else:
+                width, height = (value * MM for value in PAGE_SIZES_MM[options["page_size"]])
+                if options["orientation"] == "auto" and source_width > source_height:
+                    width, height = height, width
+            if options["orientation"] == "portrait" and width > height:
+                width, height = height, width
+            elif options["orientation"] == "landscape" and height > width:
+                width, height = height, width
+            content_width, content_height = width - 2 * margin, height - 2 * margin
+            if content_width <= 0 or content_height <= 0:
+                raise ValueError("The margin leaves no room on the selected paper. Choose a smaller margin.")
+            if options["fit"] == "actual":
+                scale = 1
+            else:
+                ratios = (content_width / source_width, content_height / source_height)
+                scale = max(ratios) if options["fit"] == "cover" else min(ratios)
+            placed_width, placed_height = source_width * scale, source_height * scale
+            x, y = (width - placed_width) / 2, (height - placed_height) / 2
+            target = result.add_blank_page(page_size=(width, height))
+            # Explicit white fill also guarantees white gaps in transparent
+            # previews and downstream image exporters.
+            target.obj["/Contents"] = result.make_stream(f"1 1 1 rg 0 0 {width:.8f} {height:.8f} re f\n".encode())
+            # Clip fill/actual-size content at the inner margin rectangle.
+            target.contents_add(f"q {margin:.8f} {margin:.8f} {content_width:.8f} {content_height:.8f} re W n\n".encode())
+            target.add_overlay(form, pikepdf.Rectangle(x, y, x + placed_width, y + placed_height), push_stack=False)
+            target.contents_add(b"Q\n")
+        result.save(destination)
+        result.close()
+    return True
 
 
 def _lossless_optimize(in_pdf: Path, out_pdf: Path, linearize: bool, progress_cb=None) -> None:
@@ -865,6 +1011,9 @@ def _ghostscript_target_fit(in_pdf: Path, out_pdf: Path, target_bytes: int, line
             "-sDEVICE=pdfwrite",
             "-dCompatibilityLevel=1.7",
             "-dPDFSETTINGS=/prepress",
+            # Honor explicit page turns instead of guessing an orientation from
+            # text while recompressing the document.
+            "-dAutoRotatePages=/None",
             # Force photographic recompression when fitting a target. Without
             # these flags, pdfwrite may retain a large PNG/Flate image stream
             # unchanged, making a size target impossible even at low DPI.
@@ -1138,7 +1287,8 @@ def _zip_outputs(output_paths: Sequence[Path], archive_path: Path) -> None:
             archive.write(path, arcname=path.name)
 
 
-def _run_job(job_id: str, paths: List[Path], options: dict, staged_pdf: Optional[Path] = None) -> None:
+def _run_job(job_id: str, paths: List[Path], options: dict, staged_pdf: Optional[Path] = None,
+             source_page_counts: Sequence[int] = ()) -> None:
     job_dir = WORK_DIR / job_id
 
     try:
@@ -1177,11 +1327,14 @@ def _run_job(job_id: str, paths: List[Path], options: dict, staged_pdf: Optional
             jobs.set(job_id, progress_build=max(0, min(100, int(p))))
 
         if staged_pdf is None:
-            _build_pdf(paths, built_pdf, dpi_fallback=dpi_fallback, progress_cb=build_progress)
+            source_page_counts = _build_pdf(paths, built_pdf, dpi_fallback=dpi_fallback, progress_cb=build_progress)
         else:
             # The queue was already assembled once during upload. Reuse it
             # read-only across previews/forges instead of uploading/building again.
             built_pdf = staged_pdf
+        layout_pdf = job_dir / ".layout.pdf"
+        if _apply_page_layout(built_pdf, layout_pdf, options, source_page_counts):
+            built_pdf = layout_pdf
         jobs.set(job_id, progress_build=100)
 
         with pikepdf.open(built_pdf) as built:

@@ -3,136 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="/static/themes.js?v=20261126"></script>
   <title>CometForge</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png?v=20261005-logo" />
   <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico?v=20261005-logo" />
   <link rel="apple-touch-icon" href="/static/cometforge-logo.png?v=20261005-logo" />
-  <link rel="stylesheet" href="/static/styles.css?v=20261005-guided" />
-  <link rel="stylesheet" href="/static/guided-flow.css?v=20261005" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261126-layout" />
+  <link rel="stylesheet" href="/static/guided-flow.css?v=20261126" />
+  <link rel="stylesheet" href="/static/themes.css?v=20261126-prism-nav" />
+  <link rel="stylesheet" href="/static/prism-shell.css?v=20261126" />
+  <link rel="stylesheet" href="/static/motion.css?v=20261126" />
 </head>
 <body>
   <div id="app" class="app">
-    <aside id="sidebar" class="sidebar" aria-label="Build settings">
-      <div class="sidebarTools"><button id="sidebarToggle" class="sidebarToggle" type="button" aria-controls="sidebarContent" aria-expanded="true" title="Collapse settings"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M6 9v6"/></svg><span class="visuallyHidden">Collapse settings</span></button></div>
+    <aside id="sidebar" class="sidebar" aria-label="CometForge navigation">
+      <div class="sidebarTools"><button id="sidebarToggle" class="sidebarToggle" type="button" aria-controls="sidebarContent" aria-expanded="true" title="Collapse navigation"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M6 9v6"/></svg><span class="visuallyHidden">Collapse navigation</span></button></div>
       <div id="sidebarContent">
       <div class="brand">
         <img class="brandLogo" src="/static/cometforge-logo.png" alt="" width="42" height="42" />
         <div class="brandTitle">CometForge</div>
-        <div class="brandSub">Your files. Refined locally.</div>
+
       </div>
 
-      <nav id="flowSteps" class="flowSteps" aria-label="Export steps">
-        <button type="button" data-step="1" aria-current="step" aria-controls="sourceStep"><span>1</span>Sources</button>
-        <button type="button" data-step="2" aria-controls="exportStep"><span>2</span>Export</button>
-        <button type="button" data-step="3" aria-controls="reviewStep"><span>3</span>Review</button>
+      <nav id="flowSteps" class="flowSteps" aria-label="PDF workflow">
+        <button type="button" data-step="1" aria-current="step" aria-controls="sourceStep"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="3" width="13" height="16" rx="2"/><path d="M8 7h5M8 11h5M8 15h3M17 7h3v14H7v-2"/></svg><span class="navLabel">Sources</span><span class="navStep">1</span></button>
+        <button type="button" data-step="2" aria-controls="layoutStep"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M14 9v12"/></svg><span class="navLabel">Layout</span><span class="navStep">2</span></button>
+        <button type="button" data-step="3" aria-controls="exportStep"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 14v6h14v-6"/></svg><span class="navLabel">Export</span><span class="navStep">3</span></button>
+        <button type="button" data-step="4" aria-controls="reviewStep"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 14l3 3 5-6"/></svg><span class="navLabel">Review</span><span class="navStep">4</span></button>
       </nav>
-      <div id="flowBody" class="flowBody">
-      <section id="sourceStep" class="flowSection" aria-labelledby="sourceTitle">
-        <h2 id="sourceTitle" class="flowTitle" tabindex="-1">Start with your files</h2>
-        <p class="flowSubtitle">Add sources here. Arrange their page order in the queue.</p>
-
-        <div id="drop" class="drop">
-          <div class="dropTitle">Drop files, ZIPs or folders anywhere</div>
-          <div class="dropSub">PDF, JPG, PNG, TIFF · ZIPs expand into the queue</div>
-          <div class="importActions"><button id="pickBtn" class="btn primary" type="button">Choose files</button><button id="pickFolderBtn" class="btn" type="button">Folder</button></div>
-          <input id="fileInput" class="fileInput" type="file" multiple
-                 accept=".zip,.pdf,.jpg,.jpeg,.png,.tif,.tiff,application/zip,application/pdf,image/jpeg,image/png,image/tiff" />
-          <input id="folderInput" class="fileInput" type="file" webkitdirectory multiple aria-label="Choose a folder" />
-        </div>
-
-        <div class="row">
-          <button id="clearBtn" class="btn">Clear</button>
-        </div>
-
-        <div class="hint" id="hint"></div>
-        <div class="sourceSummary"><span id="flowSourceCount">No sources yet</span><span id="flowSourceBytes">0 MB</span></div>
-        <p class="fieldHelp">ZIPs and folders expand automatically. Your originals stay untouched.</p>
-      </section>
-
-      <section id="exportStep" class="flowSection" aria-labelledby="exportTitle" hidden>
-        <h2 id="exportTitle" class="flowTitle" tabindex="-1">Shape your export</h2>
-        <p class="flowSubtitle">Choose quality, size and page-based parts.</p>
-
-        <label class="lbl" for="outName">Output name</label>
-        <input id="outName" type="text" value="CometForge.pdf" />
-
-        <div class="row2">
-          <div>
-            <label class="lbl" for="targetMb">Target per PDF <output id="targetMbValue" for="targetMb">20 MB</output></label>
-            <input id="targetMb" type="range" value="20" step="0.1" min="1" max="200" aria-describedby="targetMbHelp" />
-            <input id="targetMbNumber" class="targetNumber" type="number" value="20" step="0.1" min="1" max="200" aria-label="Target megabytes" />
-            <div id="targetMbHelp" class="fieldHelp">Choose a size cap to see a quick estimated range for each output. Actual sizes appear after Forge.</div>
-          </div>
-          <div>
-            <label class="lbl" for="compressMode">Compression</label>
-            <select id="compressMode" data-popup-select>
-              <option value="off">Off (build only)</option>
-              <option value="lossless">Lossless optimize</option>
-              <option value="targetfit" selected>Target-fit (quality first)</option>
-            </select>
-            <div id="compressionNote" class="fieldHelp compressionNote"></div>
-          </div>
-        </div>
-
-        <div id="advancedOptions" class="exportExtras">
-        <label class="chk splitToggle switchRow">
-          <input id="splitEnabled" type="checkbox" />
-          Split into page-based PDFs
-        </label>
-        <div id="splitOptions" class="splitOptions">
-          <label class="lbl" for="splitCount">Number of PDFs</label>
-          <input id="splitCount" type="number" value="5" min="1" max="100" step="1" />
-          <div class="fieldHelp">Pages stay in order and are divided as evenly as possible. Target-fit seeks the highest quality below each size cap.</div>
-        </div>
-
-        <label class="chk switchRow">
-          <input id="linearize" type="checkbox" />
-          Fast web view (linearize)
-        </label>
-        <div class="fieldHelp">Applied after compression. Target-fit checks the final size against your cap.</div>
-        </div>
-      </section>
-
-      <section id="reviewStep" class="flowSection" aria-labelledby="reviewTitle" hidden>
-        <h2 id="reviewTitle" class="flowTitle" tabindex="-1">Ready when you are</h2>
-        <p class="flowSubtitle">Review your settings, then let CometForge do the rest.</p>
-        <dl id="flowReview" class="flowReview"></dl>
-        <div id="estimateDetails" class="sizePreview"><div class="estimateHeading">Output estimates <span id="estimateSummary" class="estimateSummary">Add files</span></div>
-          <div class="previewActions"><button id="previewSizeBtn" class="btn small" type="button">Refresh estimates</button></div>
-          <div id="sizePreviewStatus" class="fieldHelp" role="status" aria-live="polite">Quick estimates update with your settings. Actual file sizes appear after Forge.</div>
-          <div id="sizePreviewList" class="sizePreviewList" aria-label="Estimated output file sizes"></div>
-        </div>
-      </section>
-      </div>
-
-      <div class="flowBottom">
-        <div id="flowSummary" class="flowSummary">Add sources to begin</div>
-        <div class="flowActions">
-          <button id="flowBack" class="btn" type="button" disabled>Back</button>
-          <button id="flowNext" class="btn primary" type="button" disabled>Continue</button>
-          <button id="forgeBtn" class="btn primary hidden" type="button">Forge</button>
-        </div>
-
-        <div id="progressWrap" class="progWrap hidden">
-          <div id="partProgress" class="partProgress" role="status" aria-live="polite">Preparing export…</div>
-          <div class="progRow">
-            <div class="progLabel">Build</div>
-            <div class="progTrack"><div id="buildBar" class="progBar build"></div></div>
-          </div>
-          <div class="progRow">
-            <div class="progLabel">Compress</div>
-            <div class="progTrack"><div id="compressBar" class="progBar compress"></div></div>
-          </div>
-        </div>
-
-        <div class="hint" id="status" role="status" aria-live="polite"></div>
-      </div>
-
+      <div class="sidebarSpace"></div>
+      <div class="sidebarSourceStatus"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h5M10 12h5M10 16h5"/></svg><div class="sourceSummary"><span id="flowSourceCount">No sources yet</span><span id="flowSourceBytes">0 MB</span></div></div>
+      <div class="themeSetting"><label for="appTheme">Appearance</label><select id="appTheme" data-popup-select><option value="prism">Prism · glass</option><option value="comet">Comet · mint</option><option value="light">Light · porcelain</option><option value="system">Follow system</option></select></div>
       <footer class="aboutFooter"><span>Made by Zxcvresque</span><button id="replayTourBtn" class="textButton" type="button">Quick tour</button><a href="https://github.com/zxcvresque/CometForge" target="_blank" rel="noopener noreferrer">GitHub</a></footer>
       </div>
     </aside>
 
     <main class="main">
+      <header class="workspaceToolbar">
+        <div class="workspaceIdentity"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>PDF workspace</span><span class="localIndicator">Local processing</span></div>
+        <div class="importActions"><button id="pickBtn" class="btn primary" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add files</button><button id="pickFolderBtn" class="btn" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7V5h7l2 3h9v12H3z"/></svg>Folder</button></div>
+      </header>
+      <div class="workbenchGrid">
+        <div class="workspaceDocuments">
       <section id="queueView">
       <div class="topbar">
         <div>
@@ -211,6 +123,141 @@
           </div>
         </div>
       </section>
+
+        </div>
+        <aside class="workbenchSettings" aria-label="Page and export settings">      <div id="flowBody" class="flowBody">
+      <section id="sourceStep" class="flowSection" aria-labelledby="sourceTitle">
+        <h2 id="sourceTitle" class="flowTitle" tabindex="-1">Start with your files</h2>
+        <p class="flowSubtitle">Add sources here. Arrange their page order in the queue.</p>
+
+        <div id="drop" class="drop">
+          <div class="dropTitle">Drop files, ZIPs or folders anywhere</div>
+          <div class="dropSub">PDF, JPG, PNG, TIFF · ZIPs expand into the queue</div>
+          
+          <input id="fileInput" class="fileInput" type="file" multiple
+                 accept=".zip,.pdf,.jpg,.jpeg,.png,.tif,.tiff,application/zip,application/pdf,image/jpeg,image/png,image/tiff" />
+          <input id="folderInput" class="fileInput" type="file" webkitdirectory multiple aria-label="Choose a folder" />
+        </div>
+
+        <div class="row">
+          <button id="clearBtn" class="btn">Clear</button>
+        </div>
+
+        <div class="hint" id="hint"></div>
+
+        <p class="fieldHelp">ZIPs and folders expand automatically. Your originals stay untouched.</p>
+      </section>
+
+      <section id="layoutStep" class="flowSection" aria-labelledby="layoutTitle" hidden>
+        <h2 id="layoutTitle" class="flowTitle" tabindex="-1">Make every page fit</h2>
+        <p class="flowSubtitle">Rotate pages and choose a consistent sheet size. Unused space stays white.</p>
+        <label class="lbl" for="pageSize">Page size</label>
+        <select id="pageSize" data-popup-select>
+          <option value="original">Fit · original page size</option>
+          <option value="a0">A0 · 841 × 1189 mm</option><option value="a1">A1 · 594 × 841 mm</option><option value="a2">A2 · 420 × 594 mm</option><option value="a3">A3 · 297 × 420 mm</option><option value="a4">A4 · 210 × 297 mm</option>
+          <option value="a5">A5 · 148 × 210 mm</option><option value="a6">A6 · 105 × 148 mm</option>
+          <option value="letter">US Letter · 216 × 279 mm</option><option value="legal">US Legal · 216 × 356 mm</option>
+          <option value="tabloid">Tabloid · 279 × 432 mm</option><option value="executive">Executive · 184 × 267 mm</option>
+          <option value="b4">B4 · 250 × 353 mm</option><option value="b5">B5 · 176 × 250 mm</option><option value="photo4x6">Photo · 4 × 6 in</option><option value="photo5x7">Photo · 5 × 7 in</option>
+        </select>
+        <div class="layoutFields">
+          <div><label class="lbl" for="pageOrientation">Orientation</label><select id="pageOrientation" data-popup-select><option value="auto">Automatic</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></div>
+          <div><label class="lbl" for="pageFit">Content fit</label><select id="pageFit" data-popup-select><option value="contain">Fit inside</option><option value="cover">Fill · crop edges</option><option value="actual">Actual size</option></select></div>
+        </div>
+        <label class="lbl" for="pageMargin">Margins</label>
+        <select id="pageMargin" data-popup-select><option value="none">None · 0 mm</option><option value="small">Small · 5 mm</option><option value="medium">Medium · 10 mm</option><option value="large">Large · 20 mm</option><option value="custom">Custom</option></select>
+        <div id="customMarginField" hidden><label class="lbl" for="marginMm">Margin on all sides (mm)</label><input id="marginMm" type="number" min="0" max="100" step="0.5" value="10" /></div>
+        <p id="layoutFitHelp" class="fieldHelp">Fit inside keeps the whole page visible. Margins add white space around your content.</p>
+        <div class="rotationGroup">
+          <label class="lbl" for="pageRotation">Rotate all pages</label>
+          <div class="rotationControls"><button id="rotateAllLeft" class="btn iconButton" type="button" aria-label="Rotate all pages counterclockwise"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg></button><select id="pageRotation" aria-label="All pages rotation" data-popup-select><option value="0">0° · Original</option><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">90° counterclockwise</option></select><button id="rotateAllRight" class="btn iconButton" type="button" aria-label="Rotate all pages clockwise"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10a9 9 0 1 0-2 8M21 4v6h-6"/></svg></button></div>
+          <div class="layoutGuide" aria-hidden="true"><div id="layoutPaper" class="layoutPaper"><div id="layoutContent" class="layoutContent"><svg viewBox="0 0 40 52"><path d="M8 10h24M8 18h24M8 26h24M8 34h17M8 42h20"/></svg></div></div><div><strong>White paper, clean edges</strong><span>Layout guide. Preview your actual pages after Forge.</span></div></div>
+        </div>
+        <details class="compactDetails pageRotationDetails"><summary>Rotate specific PDF pages</summary><label class="lbl" for="rotatePages">Page numbers in the combined PDF</label><input id="rotatePages" type="text" placeholder="e.g. 1, 3–5" aria-describedby="rotationHelp" /><div class="rotationPageActions"><button id="rotatePagesLeft" class="btn small" type="button">Rotate left</button><button id="rotatePagesRight" class="btn small" type="button">Rotate right</button><button id="resetPageRotations" class="textButton" type="button">Reset</button></div><p id="rotationHelp" class="fieldHelp">Uses the current queue order. Page turns reset when sources are added, removed or reordered; file turns stay with each file.</p><p id="pageRotationStatus" class="fieldHelp" role="status" aria-live="polite"></p></details>
+      </section>
+
+      <section id="exportStep" class="flowSection" aria-labelledby="exportTitle" hidden>
+        <h2 id="exportTitle" class="flowTitle" tabindex="-1">Shape your export</h2>
+        <p class="flowSubtitle">Choose quality, size and page-based parts.</p>
+
+        <label class="lbl" for="outName">Output name</label>
+        <input id="outName" type="text" value="CometForge.pdf" />
+
+        <div class="row2">
+          <div>
+            <label class="lbl" for="targetMb">Target per PDF <output id="targetMbValue" for="targetMb">20 MB</output></label>
+            <input id="targetMb" type="range" value="20" step="0.1" min="1" max="200" aria-describedby="targetMbHelp" />
+            <input id="targetMbNumber" class="targetNumber" type="number" value="20" step="0.1" min="1" max="200" aria-label="Target megabytes" />
+            <div id="targetMbHelp" class="fieldHelp">Choose a size cap to see a quick estimated range for each output. Actual sizes appear after Forge.</div>
+          </div>
+          <div>
+            <label class="lbl" for="compressMode">Compression</label>
+            <select id="compressMode" data-popup-select>
+              <option value="off">Off (build only)</option>
+              <option value="lossless">Lossless optimize</option>
+              <option value="targetfit" selected>Target-fit (quality first)</option>
+            </select>
+            <div id="compressionNote" class="fieldHelp compressionNote"></div>
+          </div>
+        </div>
+
+        <div id="advancedOptions" class="exportExtras">
+        <label class="chk splitToggle switchRow">
+          <input id="splitEnabled" type="checkbox" />
+          Split into page-based PDFs
+        </label>
+        <div id="splitOptions" class="splitOptions">
+          <label class="lbl" for="splitCount">Number of PDFs</label>
+          <input id="splitCount" type="number" value="5" min="1" max="100" step="1" />
+          <div class="fieldHelp">Pages stay in order and are divided as evenly as possible. Target-fit seeks the highest quality below each size cap.</div>
+        </div>
+
+        <label class="chk switchRow">
+          <input id="linearize" type="checkbox" />
+          Fast web view (linearize)
+        </label>
+        <div class="fieldHelp">Applied after compression. Target-fit checks the final size against your cap.</div>
+        </div>
+      </section>
+
+      <section id="reviewStep" class="flowSection" aria-labelledby="reviewTitle" hidden>
+        <h2 id="reviewTitle" class="flowTitle" tabindex="-1">Ready when you are</h2>
+        <p class="flowSubtitle">Review your settings, then let CometForge do the rest.</p>
+        <dl id="flowReview" class="flowReview"></dl>
+        <div id="estimateDetails" class="sizePreview"><div class="estimateHeading">Output estimates <span id="estimateSummary" class="estimateSummary">Add files</span></div>
+          <div class="previewActions"><button id="previewSizeBtn" class="btn small" type="button">Refresh estimates</button></div>
+          <div id="sizePreviewStatus" class="fieldHelp" role="status" aria-live="polite">Quick estimates update with your settings. Actual file sizes appear after Forge.</div>
+          <div id="sizePreviewList" class="sizePreviewList" aria-label="Estimated output file sizes"></div>
+        </div>
+      </section>
+      </div>
+
+        </aside>
+      </div>
+      <div class="flowBottom">
+        <div id="flowSummary" class="flowSummary">Add sources to begin</div>
+        <div class="flowActions">
+          <button id="flowBack" class="btn" type="button" disabled>Back</button>
+          <button id="flowNext" class="btn primary" type="button" disabled>Continue</button>
+          <button id="forgeBtn" class="btn primary hidden" type="button">Forge</button>
+        </div>
+
+        <div id="progressWrap" class="progWrap hidden">
+          <div id="partProgress" class="partProgress" role="status" aria-live="polite">Preparing export…</div>
+          <div class="progRow">
+            <div class="progLabel">Build</div>
+            <div class="progTrack"><div id="buildBar" class="progBar build"></div></div>
+          </div>
+          <div class="progRow">
+            <div class="progLabel">Compress</div>
+            <div class="progTrack"><div id="compressBar" class="progBar compress"></div></div>
+          </div>
+        </div>
+
+        <div class="hint" id="status" role="status" aria-live="polite"></div>
+      </div>
+
+
     </main>
   </div>
   <div id="globalDropNotice" class="globalDropNotice hidden" aria-hidden="true"><span>Drop to add PDFs, images, ZIPs or folders</span></div>
@@ -228,12 +275,14 @@
     </section>
   </div>
 
-  <script src="/static/app.js?v=20261005-guided"></script>
+  <script src="/static/app.js?v=20261126-layout"></script>
   <script src="/static/import.js"></script>
   <script src="/static/comparison.js?v=20261005-hd"></script>
-  <script src="/static/size-preview.js?v=20261005-guided"></script>
-  <script src="/static/guided-flow.js?v=20261005"></script>
+  <script src="/static/size-preview.js?v=20261126-layout"></script>
+  <script src="/static/layout.js?v=20261126"></script>
+  <script src="/static/guided-flow.js?v=20261126"></script>
   <script src="/static/celebration.js?v=20261005"></script>
-  <script src="/static/tour.js?v=20261005-guided"></script>
+  <script src="/static/tour.js?v=20261126-layout"></script>
+  <script src="/static/motion.js?v=20261126"></script>
 </body>
 </html>

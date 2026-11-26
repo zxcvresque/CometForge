@@ -1,4 +1,4 @@
-CometForge 1.1.0 dependency notices
+CometForge 1.2.0 dependency notices
 
 Ghostscript 10.08.0, Copyright Artifex Software, Inc.
 Distributed under GNU Affero General Public License version 3 (AGPL-3.0).

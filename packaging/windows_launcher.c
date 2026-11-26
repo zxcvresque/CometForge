@@ -83,5 +83,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
     HeapFree(GetProcessHeap(), 0, script);
     HeapFree(GetProcessHeap(), 0, python);
     HeapFree(GetProcessHeap(), 0, directory);
+    if (exit_code != 0)
+        return fail(L"CometForge stopped unexpectedly. Check launcher.log in "
+                    L"%LOCALAPPDATA%\\CometForge\\data, or reinstall CometForge.", exit_code);
     return (int)exit_code;
 }

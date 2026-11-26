@@ -1,0 +1,76 @@
+name: Windows release QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Draft release tag to verify (for example v1.2.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  installed-app:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Download draft installer
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'Expected a version tag such as v1.2.0' }
+          gh release download "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --pattern '*-Windows-x64-Setup.exe' --dir installer
+          if ($LASTEXITCODE -ne 0) { throw 'Draft installer download failed' }
+      - name: Install released application
+        shell: pwsh
+        run: |
+          $installer = @(Get-ChildItem installer -Filter '*-Windows-x64-Setup.exe')
+          if ($installer.Count -ne 1) { throw 'Expected exactly one Windows installer' }
+          $setup = Start-Process -FilePath $installer[0].FullName -ArgumentList '/S' -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Installer failed with $($setup.ExitCode)" }
+          $gs = Join-Path $env:LOCALAPPDATA 'Programs\CometForge\ghostscript\bin\gswin64c.exe'
+          if (!(Test-Path $gs)) { throw 'Bundled Ghostscript is missing' }
+          "COMETFORGE_GHOSTSCRIPT=$gs" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Test PDF engine and desktop launch contracts
+        run: |
+          python scripts/test_windows_desktop.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/verify_v1_1.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/test_hd_render.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/test_page_layout.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/test_options_api.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test interface controllers
+        run: node --test scripts/test_guided_ui.cjs scripts/test_comparison_ui.cjs scripts/test_layout_ui.cjs scripts/test_themes_ui.cjs scripts/test_motion_ui.cjs
+      - name: Launch installed desktop app and check for console windows
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG.Substring(1)
+          python scripts/smoke_windows_app.py --version "$version"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed desktop application smoke test failed' }
+      - name: Retain desktop application diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-application-log
+          path: ~/AppData/Local/CometForge/data/launcher.log
+          if-no-files-found: ignore

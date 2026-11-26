@@ -12,6 +12,7 @@ import os
 import platform
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import sys
 import urllib.request
@@ -127,6 +128,22 @@ def build_native_launcher(destination: Path):
                     f"-DCOMETFORGE_FILE_VERSION={file_version}",
                     "windows_launcher.c", resource, "-lshell32", "-luser32",
                     "-o", str(destination)], cwd=ROOT / "packaging", env=environment, check=True)
+    verify_gui_launcher(destination)
+
+
+def verify_gui_launcher(executable: Path):
+    """Reject an accidental console build before it reaches an installer."""
+    payload = executable.read_bytes()
+    if len(payload) < 64 or payload[:2] != b"MZ":
+        raise RuntimeError("CometForge launcher is not a Windows executable")
+    header = struct.unpack_from("<I", payload, 60)[0]
+    if header + 94 > len(payload) or payload[header:header + 4] != b"PE\0\0":
+        raise RuntimeError("CometForge launcher has an invalid PE header")
+    machine = struct.unpack_from("<H", payload, header + 4)[0]
+    magic = struct.unpack_from("<H", payload, header + 24)[0]
+    subsystem = struct.unpack_from("<H", payload, header + 92)[0]
+    if (machine, magic, subsystem) != (0x8664, 0x20B, 2):
+        raise RuntimeError("CometForge launcher must be an x64 GUI executable, never a console executable")
 
 
 def main():
@@ -142,6 +159,8 @@ def main():
                     "--wheel-dir", str(WHEELS), "--disable-pip-version-check"], check=True)
     wheels = target_wheels()
     runtime = BUILD / "runtime"
+    if runtime.exists():
+        shutil.rmtree(runtime)
     runtime.mkdir(exist_ok=True)
     with zipfile.ZipFile(embedded) as archive:
         archive.extractall(runtime)
@@ -163,8 +182,10 @@ def main():
                 destination.write_bytes(archive.read(info))
     (runtime / "python313._pth").write_text("python313.zip\n.\nLib/site-packages\n..\nimport site\n", encoding="utf-8")
     app = BUILD / "app"
+    if app.exists():
+        shutil.rmtree(app)
     app.mkdir(exist_ok=True)
-    for name in ("launcher.py", "windows_app.py", "version.py", "server.py", "README.md", "requirements.txt", "TEST_CASES.md"):
+    for name in ("launcher.py", "windows_app.py", "desktop_smoke.py", "version.py", "server.py", "README.md", "requirements.txt", "TEST_CASES.md"):
         shutil.copy(ROOT / name, app / name)
     shutil.copytree(ROOT / "static", app / "static", dirs_exist_ok=True)
     shutil.copy(ROOT / "packaging" / "assets" / "CometForge.ico", app / "CometForge.ico")
@@ -174,6 +195,8 @@ def main():
     gs_installer = DOWNLOADS / "gs10080w64.exe"
     download("https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10080/gs10080w64.exe", gs_installer)
     gs = BUILD / "ghostscript"
+    if gs.exists():
+        shutil.rmtree(gs)
     subprocess.run([shutil.which("7zz") or "7z", "x", "-y", f"-o{gs}", str(gs_installer)], check=True)
     # NSIS packages place their payload under $INSTDIR or $_OUTDIR. Flatten
     # the directory containing bin/gswin64c.exe to the installed gs root.

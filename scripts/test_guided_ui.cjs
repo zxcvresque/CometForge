@@ -28,11 +28,11 @@ class Element {
 function fixture() {
   const elements = new Map();
   const id = name => { if (!elements.has(name)) elements.set(name, new Element()); return elements.get(name); };
-  id('flowSteps').buttons = [1,2,3].map(step => Object.assign(new Element(), {dataset:{step:String(step)}}));
+  id('flowSteps').buttons = [1,2,3,4].map(step => Object.assign(new Element(), {dataset:{step:String(step)}}));
   id('targetMb').value = '20';
   const events = {};
-  const document = {getElementById:id, createElement:()=>new Element(), dispatchEvent(){}, body:new Element(), addEventListener(){}, removeEventListener(){}, hidden:false};
-  const window = {addEventListener:(name,fn)=> { events[name] = fn; },removeEventListener(){}};
+  const document = {getElementById:id, createElement:()=>new Element(), dispatchEvent(){}, body:new Element(), querySelectorAll:()=>[], addEventListener(){}, removeEventListener(){}, hidden:false};
+  const window = {dispatchEvent(){},addEventListener:(name,fn)=> { events[name] = fn; },removeEventListener(){}};
   const context = vm.createContext({window, document, CustomEvent:class { constructor(type, init) { this.type=type; this.detail=init?.detail; } }});
   return {id,events,window,document,context};
 }
@@ -59,6 +59,7 @@ test('guided steps, summaries and busy controls preserve options', () => {
   assert.equal(f.id('flowNext').disabled, true);
   state.files = [{size:20e6}]; f.events['cometforge:change']();
   assert.equal(f.id('flowNext').disabled, false);
+  f.id('flowNext').click(); assert.equal(f.id('layoutStep').hidden, false);
   f.id('flowNext').click(); assert.equal(f.id('exportStep').hidden, false);
   state.options.split_enabled = true; state.options.split_count = 5;
   f.id('splitEnabled').checked = true;

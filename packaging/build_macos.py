@@ -36,7 +36,7 @@ def collect_licenses(destination, gs_prefix):
         shutil.copy(recipe, destination / "ghostscript-homebrew-build.rb")
     source_dir = destination / "source"
     source_dir.mkdir(exist_ok=True)
-    for name in ("server.py", "launcher.py", "version.py", "requirements.txt", "TEST_CASES.md"):
+    for name in ("server.py", "launcher.py", "desktop_smoke.py", "version.py", "requirements.txt", "TEST_CASES.md"):
         shutil.copy(ROOT / name, source_dir / name)
     import img2pdf
     shutil.copy(img2pdf.__file__, source_dir / "img2pdf.py")
@@ -72,7 +72,9 @@ def main():
             "--collect-all", "webview", "--hidden-import", "webview.platforms.cocoa",
             "--hidden-import", "uvicorn.logging", "--hidden-import", "uvicorn.loops.asyncio",
             "--hidden-import", "uvicorn.protocols.http.h11_impl", "--hidden-import", "uvicorn.lifespan.on",
-            "--exclude-module", "tkinter", "--exclude-module", "pytest", str(ROOT / "launcher.py")]
+            "--exclude-module", "tkinter", "--exclude-module", "pytest",
+            "--exclude-module", "PySide6", "--exclude-module", "PyQt5",
+            "--exclude-module", "PyQt6", str(ROOT / "launcher.py")]
     subprocess.run(args, cwd=ROOT, check=True)
     import plistlib
     info = out / "CometForge.app" / "Contents" / "Info.plist"

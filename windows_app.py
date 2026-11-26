@@ -112,7 +112,11 @@ def window_properties(root: Path):
     else:
         # Also support a Windows source checkout launched in desktop mode.
         import sys
-        command = subprocess.list2cmdline([sys.executable, str(root / "launcher.py"), "--desktop"])
+        python = Path(sys.executable)
+        windowed_python = python.with_name("pythonw.exe")
+        if windowed_python.is_file():
+            python = windowed_python
+        command = subprocess.list2cmdline([str(python), str(root / "launcher.py"), "--desktop"])
         icon = f"{root / 'CometForge.ico'},0"
         name = "CometForge"
     # Relaunch properties must precede the explicit window AppUserModelID.

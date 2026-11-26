@@ -1,0 +1,95 @@
+/* Prism's navigation architecture: a compact floating rail, a solid workspace,
+   and detailed controls in the workspace rather than in navigation. */
+.app{grid-template-columns:228px minmax(0,1fr);gap:0;min-height:100dvh;padding:8px}
+.sidebar{position:sticky;top:8px;height:calc(100dvh - 16px);padding:0;border:0;border-radius:14px;box-shadow:inset 0 1px var(--glass-shine),inset 0 0 0 1px var(--glass-edge);overflow:hidden}
+#sidebarContent{display:flex;flex-direction:column;height:100%;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;margin:0;padding:0 40px 0 14px;height:58px;min-height:58px;flex-shrink:0}
+.brandLogo{width:28px;height:28px;object-fit:contain}.brandTitle{font-size:15px;font-weight:650;letter-spacing:-.3px;line-height:1.2}
+.sidebarTools{position:absolute;top:16px;right:10px}.sidebarToggle{width:26px;height:26px;padding:4px;border-radius:6px}.sidebarToggle svg{width:17px;height:17px}.sidebarToggle:hover{background:var(--hover)}
+.flowSteps{display:flex;flex-direction:column;gap:3px;padding:4px 8px;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;flex-shrink:0}
+.flowSteps button{display:flex;align-items:center;justify-content:flex-start;gap:10px;flex:none;min-width:0;min-height:36px;padding:8px 10px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:var(--muted);font-size:13px;line-height:20px;text-align:left}
+.flowSteps button svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.flowSteps button .navLabel{opacity:1;color:inherit;flex:1}.flowSteps button .navStep{opacity:1;font-size:11px;line-height:16px;min-width:18px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.flowSteps button[aria-current=step]{background:var(--selected);box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),.13);color:var(--a)}.flowSteps button[aria-current=step] .navLabel,.flowSteps button[aria-current=step] .navStep{color:var(--a)}
+.flowSteps button:hover:not(:disabled){background:var(--hover);color:var(--text)}.flowSteps button:disabled{opacity:.42}
+.sidebarSpace{flex:1;min-height:24px}.sidebarSourceStatus{display:flex;align-items:center;gap:10px;padding:14px 12px;margin:0 8px 8px;background:var(--input);border-radius:10px;flex-shrink:0}.sidebarSourceStatus>svg{width:22px;height:22px;stroke:var(--a);stroke-width:1.5;flex:none}.sidebarSourceStatus .sourceSummary{display:flex;flex-direction:column;gap:5px;padding:0;margin:0;border:0;font-size:11px}.sidebarSourceStatus .sourceSummary span:first-child{color:var(--text);font-weight:500}.sidebarSourceStatus .sourceSummary span:last-child{font-size:10px;color:var(--muted)}
+.themeSetting{padding:5px 12px 9px;margin:0;background:transparent;gap:8px;flex-direction:column;align-items:stretch;font-size:10px}.themeSetting>label{font-size:10px;margin:0 0 1px 2px}.themeSetting .popupSelect{width:100%}.themeSetting .popupTrigger{min-height:30px;font-size:11px;padding:6px 8px}
+.aboutFooter{display:flex;gap:10px;align-items:center;padding:8px 12px 13px;margin:0;background:transparent;border-top:1px solid var(--border);font-size:10px;flex-wrap:wrap}.aboutFooter>span{flex-basis:100%;color:var(--muted);font-size:9px;order:3;margin-top:3px}
+.main{margin:0 0 0 8px;padding:0;border-radius:12px;min-height:calc(100dvh - 16px);min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border),var(--shadow)}
+.workspaceToolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:59px;padding:12px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.workspaceIdentity{display:flex;align-items:center;gap:9px;min-width:0;font-size:12px;font-weight:500;white-space:nowrap}.workspaceIdentity>svg{width:17px;height:17px;stroke:var(--muted);stroke-width:1.5;flex:none}.localIndicator{font-size:10px;font-weight:400;color:var(--muted);margin-left:6px;padding-left:14px;border-left:1px solid var(--border2)}
+.importActions{margin:0;gap:8px;flex-shrink:0}.importActions .btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:7px 11px;font-size:12px}.importActions .btn svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.importActions #pickBtn{flex:none}
+.workbenchGrid{display:grid;grid-template-columns:minmax(0,1fr) 324px;flex:1;min-width:0;min-height:0;align-items:stretch}
+.workspaceDocuments{padding:24px 22px;min-width:0;overflow:hidden}.workbenchSettings{border-left:1px solid var(--border);background:var(--chrome);min-width:0;display:flex;flex-direction:column}.flowBody{padding:22px 20px 25px;overflow:visible;min-height:0;flex:1}.flowTitle{font-size:18px;letter-spacing:-.35px;margin:0 0 7px;line-height:1.35}.flowSubtitle{font-size:11px;line-height:1.55;margin:0 0 20px}
+.flowSection .lbl{font-size:11px;margin-top:14px;margin-bottom:7px}.flowSection .fieldHelp{font-size:10px;line-height:1.55}.flowSection .popupTrigger{min-height:34px;font-size:12px}.flowSection input[type=text],.flowSection input[type=number]{font-size:12px;padding:8px 10px;border-radius:8px}.flowSection .drop{padding:22px 12px;text-align:center;gap:10px}.dropTitle{font-size:12px;line-height:1.5}.dropSub{font-size:10px;line-height:1.5}.flowSection .drop::before{content:"";display:block;margin:0 auto 3px;width:25px;height:31px;border:1.5px solid var(--a);border-radius:4px;background:linear-gradient(var(--a),var(--a)) center 10px/12px 1px no-repeat,linear-gradient(var(--a),var(--a)) center 16px/12px 1px no-repeat,linear-gradient(var(--a),var(--a)) center 22px/8px 1px no-repeat;opacity:.8}
+.workbenchSettings .rotationGroup{margin-top:20px}.layoutGuide{padding-bottom:6px}.layoutGuide span{max-width:18ch}.flowReview{font-size:11px;grid-template-columns:85px minmax(0,1fr);margin-top:10px}.flowReview dt,.flowReview dd{padding:9px 0}.flowSection .row{margin-top:12px}.flowSection .chk{font-size:12px}.flowSection .switchRow{flex-direction:row-reverse;justify-content:space-between;line-height:1.5}
+.flowBottom{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 22px;padding:14px 20px;margin:0;background:var(--surface);border-top:1px solid var(--border2);flex-shrink:0}.flowSummary{margin:0;font-size:11px;line-height:1.5}.flowActions{display:flex;min-width:210px;gap:8px}.flowActions .primary{flex:1;min-width:125px}.flowBottom .hint{grid-column:1/-1;font-size:11px;line-height:1.5;margin:0;max-height:none}.flowBottom .progWrap{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 20px;margin:3px 0}.flowBottom .partProgress{grid-column:1/-1;font-size:11px}
+.topTitle{font-size:20px}.topSub{font-size:11px;line-height:1.5}.topbar{margin-bottom:12px}.totals{gap:6px}.pill{font-size:10px;white-space:nowrap;padding:6px 8px}.queueActions{margin-top:18px;padding:8px;gap:6px}.sortControl{width:175px}.selectedCount{font-size:10px;min-width:0}.queueActions .btn.small{font-size:10px;padding:6px 8px;min-height:29px}.queueActions .popupTrigger{min-height:29px;font-size:10px;padding:6px 8px}.item{padding:11px;gap:8px;grid-template-columns:16px 18px 38px minmax(0,1fr) auto}.thumb{width:38px;height:42px}.name{font-size:12px}.sub{font-size:10px;gap:7px}.badge{font-size:9px}.sourceActions{gap:6px}.sourceActions .btn.small,.sourceActions .remove{font-size:10px;min-height:29px;padding:6px 8px}.rotateSource span{display:none}.handle{width:18px}.handle svg{width:16px}.queueIllustration{padding-top:50px}.quietDocument{width:150px;height:190px;padding:22px 19px}.documentLine{margin:10px 0}.queueIllustration p{font-size:11px;margin-top:25px}
+.resultsLayout{grid-template-columns:minmax(0,1fr);min-height:0}.outputList{grid-template-columns:repeat(2,minmax(0,1fr));max-height:190px}.previewPane{min-height:450px}.wipeStage{height:60vh;min-height:390px}.resultsView .topbar{align-items:flex-start;flex-direction:column}.resultActions{width:100%;gap:6px}.resultNotice{font-size:11px;line-height:1.5}.outputFileName{font-size:11px}.outputFileSize{font-size:10px}.outputDownload{font-size:10px!important;padding:6px 8px!important}.wipeToolbar{gap:6px}.wipeToolbar .btn{font-size:10px;padding:6px 8px}.compareSizes{margin-left:0}.compareStatus{font-size:10px}.viewerModeControl{width:155px}
+.app.sidebarCollapsed{grid-template-columns:48px minmax(0,1fr)}.sidebarCollapsed .sidebar{padding:0;border-radius:10px}.sidebarCollapsed .sidebarTools{right:10px;top:17px}.sidebarCollapsed .main{margin-left:8px}.sidebarCollapsed .workbenchGrid{grid-template-columns:minmax(0,1fr) 324px}
+@media(min-width:1450px){.resultsLayout{grid-template-columns:minmax(170px,210px) minmax(0,1fr)}.outputList{display:grid;grid-template-columns:1fr;max-height:74vh}.resultsView .topbar{flex-direction:row;align-items:flex-end}.resultActions{width:auto}}
+@media(max-width:1100px){.workbenchGrid{grid-template-columns:minmax(0,1fr);display:flex;flex-direction:column}.workbenchSettings{order:-1;border-left:0;border-bottom:1px solid var(--border);display:block}.flowBody{padding:22px 24px;overflow:visible}.flowSection{max-width:720px}.flowSection .flowTitle{font-size:20px}.flowSection .flowSubtitle{max-width:60ch}.flowSection .popupSelect,.flowSection>input,.flowSection>label,.flowSection .rotationControls{max-width:420px}.layoutFields{max-width:420px}.flowSection .drop{max-width:420px}.layoutGuide{max-width:420px}.layoutGuide span{max-width:30ch}.rotationGroup,.pageRotationDetails{max-width:560px}.flowSection .row2{max-width:560px}.exportExtras{max-width:560px}.flowReview{max-width:560px}.sizePreview{max-width:560px}.flowSection .flowSubtitle{margin-bottom:18px}.workspaceDocuments{padding:23px 24px}.workspaceToolbar{padding:12px 18px}.localIndicator{display:none}.sourceActions .remove{font-size:10px}.app.sidebarCollapsed .workbenchGrid{display:flex}.outputList{max-height:160px}.topbar{gap:10px}.queueActions{margin-top:15px}.flowBottom{position:sticky;bottom:0;z-index:15;box-shadow:0 -6px 18px #0000000a}.flowBottom .hint{max-height:58px;overflow:auto}}
+@media(max-width:760px){.app{display:block;padding:6px;min-height:100dvh}.sidebar{position:relative;top:0;height:auto;min-height:0;border-radius:12px;margin-bottom:6px}.brand{height:48px;min-height:48px;padding-left:12px}.brandLogo{width:26px;height:26px}.brandTitle{font-size:14px}.sidebarTools{top:11px;right:10px}.flowSteps{flex-direction:row;padding:0 6px 7px;gap:4px}.flowSteps button{justify-content:center;padding:7px 4px;gap:6px;flex:1;font-size:11px;min-height:34px}.flowSteps button svg{width:15px;height:15px}.flowSteps button .navLabel{flex:none}.flowSteps button .navStep{display:none}.sidebarSpace,.sidebarSourceStatus{display:none}.themeSetting{position:absolute;top:12px;right:45px;padding:0;width:112px}.themeSetting>label{display:none}.themeSetting .popupTrigger{min-height:25px;font-size:10px;padding:4px 7px}.aboutFooter{display:none}.main{margin:0;min-height:calc(100dvh - 102px);border-radius:12px;overflow:visible}.workspaceToolbar{padding:11px 14px;gap:10px;min-height:51px}.workspaceIdentity{font-size:11px}.workspaceIdentity>svg{display:none}.importActions{gap:6px}.importActions .btn{padding:6px 9px;font-size:10px;min-height:29px;gap:4px}.importActions .btn svg{width:13px;height:13px}.flowBody{padding:20px 17px}.flowSection .flowTitle{font-size:19px}.workspaceDocuments{padding:20px 16px}.flowBottom{padding:12px 15px;grid-template-columns:1fr;gap:10px;position:sticky;border-radius:0 0 12px 12px}.flowSummary{font-size:10px}.flowActions{min-width:0}.flowActions .primary{min-width:0}.flowBottom .progWrap{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}.totals{justify-content:flex-start}.queueActions{gap:6px}.sortControl{width:100%;margin-bottom:3px}.queueActions .btn.small{font-size:10px}.item{grid-template-columns:16px 14px 32px minmax(0,1fr) auto;padding:9px;gap:6px}.thumb{width:32px;height:38px}.name{font-size:11px}.sub{font-size:9px}.sourceActions{flex-direction:column;gap:4px}.sourceActions .btn.small,.sourceActions .remove{min-height:25px;font-size:9px;padding:4px 6px}.quietDocument{width:135px;height:170px}.queueIllustration{padding-top:35px}.outputList{grid-template-columns:1fr}.previewPane,.previewFrame,.previewEmpty{min-height:400px}.wipeStage{height:55vh;min-height:330px}.viewerModeControl{width:140px}.resultActions{flex-wrap:wrap}.app.sidebarCollapsed{display:grid;grid-template-columns:40px minmax(0,1fr);gap:6px}.sidebarCollapsed .sidebar{position:sticky;top:6px;height:calc(100dvh - 12px);margin:0;min-height:0}.sidebarCollapsed .sidebarTools{right:7px;top:12px}.sidebarCollapsed .main{margin:0}.sidebarCollapsed .workspaceIdentity{display:none}}
+@media(min-width:761px){html,body{height:100%;overflow:hidden}.app{height:100dvh;min-height:0;overflow:hidden;box-sizing:border-box}.main{height:calc(100dvh - 16px);min-height:0}.workbenchGrid{min-height:0}.workspaceDocuments{min-height:0;overflow:auto}.workbenchSettings{min-height:0;overflow:hidden}.flowBody{min-height:0;overflow:auto;overscroll-behavior:contain}.flowBottom{position:relative;bottom:auto}.flowBottom .hint{max-height:64px;overflow:auto}.flowBottom .progWrap{flex-shrink:0}}
+@media(min-width:761px) and (max-width:1100px){.workbenchGrid{overflow:auto;overscroll-behavior:contain}.workbenchSettings{overflow:visible;flex:none}.flowBody{overflow:visible}.workspaceDocuments{overflow:visible;flex:none}.flowBottom{position:relative;bottom:auto}}
+
+/* Match Prism's outer glass construction: two independently rounded panes
+   inset into one quiet shell. These materials do not alter the controls. */
+:root,[data-theme="prism"]{
+  --shell-upper:rgba(92,86,150,.42);
+  --shell-lower:rgba(43,92,100,.31);
+  --shell-rim:rgba(214,214,244,.24);
+  --sidebar-upper:rgba(58,56,88,.79);
+  --sidebar-middle:rgba(34,35,43,.83);
+  --sidebar-lower:rgba(27,42,47,.83);
+  --sidebar-rim:rgba(226,226,248,.32);
+  --workspace-rim:rgba(220,220,241,.12);
+}
+[data-theme="comet"]{
+  --shell-upper:rgba(70,117,99,.36);
+  --shell-lower:rgba(45,90,97,.28);
+  --shell-rim:rgba(206,237,224,.23);
+  --sidebar-upper:rgba(43,68,57,.81);
+  --sidebar-middle:rgba(29,43,36,.85);
+  --sidebar-lower:rgba(24,45,45,.85);
+  --sidebar-rim:rgba(219,245,232,.28);
+  --workspace-rim:rgba(214,239,225,.12);
+}
+[data-theme="light"]{
+  --shell-upper:rgba(180,173,221,.44);
+  --shell-lower:rgba(157,192,200,.33);
+  --shell-rim:rgba(255,255,255,.85);
+  --sidebar-upper:rgba(239,236,252,.86);
+  --sidebar-middle:rgba(243,243,249,.88);
+  --sidebar-lower:rgba(230,241,244,.86);
+  --sidebar-rim:rgba(255,255,255,.95);
+  --workspace-rim:rgba(117,117,151,.16);
+}
+.app{
+  border-radius:18px;
+  background:linear-gradient(155deg,var(--shell-upper),transparent 48%),
+             linear-gradient(0deg,var(--shell-lower),transparent 58%);
+  box-shadow:inset 0 0 0 1px var(--shell-rim);
+}
+.sidebar{
+  border-radius:14px;
+  background:linear-gradient(180deg,var(--sidebar-upper) 0%,var(--sidebar-middle) 55%,var(--sidebar-lower) 100%);
+  box-shadow:inset 0 0 0 1px var(--sidebar-rim),inset 0 1px 0 rgba(255,255,255,.14),0 2px 5px #0003;
+  backdrop-filter:blur(36px) saturate(140%);
+  -webkit-backdrop-filter:blur(36px) saturate(140%);
+}
+.main{
+  border-radius:14px;
+  box-shadow:inset 0 0 0 1px var(--workspace-rim);
+}
+@media(prefers-reduced-transparency:reduce){
+  .app{background:var(--panel)}
+  .sidebar{background:var(--panel);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .sidebar{background:var(--panel)}
+}
+@media(forced-colors:active){
+  .app,.sidebar,.main{background:Canvas;box-shadow:none;outline:1px solid CanvasText;outline-offset:-1px}
+}
+@media(max-width:760px){.app{border-radius:14px}.sidebar,.main{border-radius:12px}}

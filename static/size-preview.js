@@ -69,7 +69,10 @@
         const result = await request('/api/source', {method: 'POST', body});
         while (true) {
           const source = await request(`/api/source/${result.source_id}`);
-          if (source.stage === 'ready') return result.source_id;
+          if (source.stage === 'ready') {
+            window.dispatchEvent(new CustomEvent('cometforge:source-ready', {detail:{files:state.files,pageCount:source.page_count,sourcePageCounts:source.source_page_counts}}));
+            return result.source_id;
+          }
           if (source.stage === 'error') throw new Error(source.error || 'Could not read these files.');
           await sleep(400);
         }

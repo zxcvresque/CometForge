@@ -2,7 +2,7 @@ Unicode True
 !include "MUI2.nsh"
 !include "x64.nsh"
 !ifndef VERSION
-!define VERSION "1.1.1"
+!define VERSION "1.2.0"
 !endif
 !ifndef PAYLOAD
 !define PAYLOAD "build/windows"

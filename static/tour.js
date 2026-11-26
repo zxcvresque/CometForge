@@ -4,9 +4,9 @@
   const overlay=id('tourOverlay'), dialog=id('tourDialog'), next=id('tourNext'), back=id('tourBack');
   const steps = [
     {title:'Welcome to CometForge',description:'Build clear, shareable PDFs from images and existing documents. Everything is processed by your own CometForge instance.',tip:'Start with files, ZIPs or a whole folder. Drop them anywhere to fill the queue.'},
-    {title:'Keep quality. Choose your cap.',description:'Follow Sources, Export and Review. Target-fit seeks the highest quality below your size cap; lossless preserves image quality.',tip:'In Export, choose page-based parts and fast web view. Review shows your settings and approximate size ranges before Forge.'},
+    {title:'Keep quality. Choose your cap.',description:'Follow Sources, Layout, Export and Review. Target-fit seeks the highest quality below your size cap; lossless preserves image quality.',tip:'In Layout, rotate pages, choose paper size, fit and margins. In Export, choose page-based parts and fast web view. Review shows your settings and approximate size ranges before Forge.'},
     {title:'Compare the details',description:'Forge once, then inspect the same page before and after compression. Drag the vertical divider left and right, change pages, or zoom in.',tip:'Each output shows its actual size. Download one PDF or the ZIP containing all parts.'},
-    {title:'Ready to forge',description:'Queue order becomes page order. Files start in natural name order: 1, 2, 10, then A–Z. Select a group to move it, or sort by modification date.',tip:'Collapse the settings panel for more room. You can replay this introduction from Quick tour.'},
+    {title:'Ready to forge',description:'Queue order becomes page order. Files start in natural name order: 1, 2, 10, then A–Z. Select a group to move it, or sort by modification date.',tip:'Use the left navigation to move between steps. Collapse it for more workspace. You can replay this introduction from Quick tour.'},
   ];
   let index=0, previousFocus=null;
   function render() {

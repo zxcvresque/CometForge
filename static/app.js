@@ -48,8 +48,10 @@ function applyQueueSort() {
     return (mode === "date-newest" ? b.lastModified - a.lastModified : a.lastModified - b.lastModified) || compareNames(a, b);
   });
   lastSelectedIndex = -1;
+  window.CometForgeLayout?.resetPageRotations();
 }
 function useManualOrder() {
+  window.CometForgeLayout?.resetPageRotations();
   if (els.queueSort.value !== "manual") { els.queueSort.value = "manual"; els.queueSort.dispatchEvent(new Event("change")); }
 }
 function notifyChange() { window.dispatchEvent(new Event("cometforge:change")); }
@@ -78,6 +80,8 @@ function getSnapshot() {
       output_name: normaliseOutputName(els.outName.value), target_mb: Number(els.targetMb.value) || 20,
       compress_mode: els.compressMode.value || "targetfit", linearize: els.linearize.checked,
       dpi_fallback: 300, split_enabled: els.splitEnabled.checked,
+      ...(window.CometForgeLayout?.getOptions() || {}),
+      source_rotations: items.map((item) => item.rotation || 0),
       ...(els.splitEnabled.checked ? { split_count: splitCount } : {}),
     },
   };
@@ -116,17 +120,20 @@ async function addFiles(fileList) {
   const files = Array.from(fileList || []);
   if (!files.length) return;
   let rejected = 0;
+  const initialCount = items.length;
   for (const file of files) {
     if (!isPdf(file) && !isImage(file)) { rejected += 1; continue; }
     const kind = isPdf(file) ? "pdf" : "img";
-    items.push({ id: genId(), file, name: file.name, size: file.size, lastModified: file.lastModified || 0, kind, thumbUrl: kind === "img" ? URL.createObjectURL(file) : "" });
+    items.push({ id: genId(), file, name: file.name, size: file.size, lastModified: file.lastModified || 0, kind, rotation: 0, thumbUrl: kind === "img" ? URL.createObjectURL(file) : "" });
   }
+  if (items.length !== initialCount) window.CometForgeLayout?.resetPageRotations();
   els.fileInput.value = "";
   setHint(rejected ? `Ignored ${rejected} unsupported file${rejected === 1 ? "" : "s"}.` : "");
   applyQueueSort(); render(); notifyChange();
 }
 
 function clearAll() {
+  window.CometForgeLayout?.resetPageRotations();
   items.forEach((item) => item.thumbUrl && URL.revokeObjectURL(item.thumbUrl));
   items = []; selectedIds.clear(); lastSelectedIndex = -1;
   setHint(""); setStatus(""); els.progressWrap.classList.add("hidden");
@@ -137,7 +144,7 @@ function render() {
   const active = document.activeElement;
   const focusedRow = active?.closest(".item");
   const focusedId = focusedRow?.dataset.id;
-  const focusedControl = active?.classList.contains("selectItem") ? ".selectItem" : active?.classList.contains("remove") ? ".remove" : null;
+  const focusedControl = active?.classList.contains("selectItem") ? ".selectItem" : active?.classList.contains("remove") ? ".remove" : active?.classList.contains("rotateSource") ? ".rotateSource" : null;
   selectedIds = new Set([...selectedIds].filter((id) => items.some((item) => item.id === id)));
   els.list.replaceChildren(...items.map(makeRow));
   refreshTotals();
@@ -148,7 +155,7 @@ function render() {
 }
 
 function pdfThumbnail() {
-  return "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='12' fill='%230b0b0b' stroke='%23333333'/><text x='32' y='38' text-anchor='middle' font-size='18' fill='%23ce79d9' font-family='Arial' font-weight='700'>PDF</text></svg>");
+  return "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='12' fill='#f8f8fc' stroke='#c5cad8'/><text x='32' y='38' text-anchor='middle' font-size='18' fill='#6553ae' font-family='Arial' font-weight='700'>PDF</text></svg>");
 }
 
 function selectItem(id, checked, range) {
@@ -173,7 +180,7 @@ function makeRow(item) {
   check.setAttribute("aria-label", `Select ${item.name}`);
   check.addEventListener("click", (event) => { event.stopPropagation(); selectItem(item.id, event.target.checked, event.shiftKey); });
   const handle = document.createElement("div");
-  handle.className = "handle"; handle.textContent = "⋮⋮"; handle.title = "Drag selected files to reorder";
+  handle.className = "handle"; handle.innerHTML = '<svg viewBox="0 0 18 24" aria-hidden="true"><path d="M6 6h.01M12 6h.01M6 12h.01M12 12h.01M6 18h.01M12 18h.01"/></svg>'; handle.title = "Drag selected files to reorder";
   const thumb = document.createElement("img");
   thumb.className = "thumb"; thumb.src = item.kind === "img" && item.thumbUrl ? item.thumbUrl : pdfThumbnail(); thumb.alt = "";
   const meta = document.createElement("div"); meta.className = "meta";
@@ -181,6 +188,13 @@ function makeRow(item) {
   const sub = document.createElement("div"); sub.className = "sub";
   const badge = document.createElement("span"); badge.className = `badge ${item.kind === "pdf" ? "pdf" : ""}`; badge.textContent = item.kind.toUpperCase();
   const size = document.createElement("span"); size.textContent = fmtMB(item.size || 0); sub.append(badge, size); meta.append(name, sub);
+  const rotated = document.createElement("span"); rotated.className = "rotationLabel"; rotated.textContent = item.rotation ? `${item.rotation}° clockwise` : ""; sub.append(rotated);
+  const actions = document.createElement("div"); actions.className = "sourceActions";
+  const rotate = document.createElement("button"); rotate.className = "btn small rotateSource"; rotate.type = "button";
+  rotate.setAttribute("aria-label", `Rotate ${item.name} clockwise`); rotate.title = "Rotate every page in this file 90° clockwise";
+  rotate.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10a9 9 0 1 0-2 8M21 4v6h-6"/></svg><span>Rotate</span>';
+  rotate.addEventListener("click", (event) => { event.stopPropagation(); item.rotation = ((item.rotation || 0) + 90) % 360; render(); notifyChange(); });
+  if (item.kind === "img") thumb.style.transform = `rotate(${item.rotation || 0}deg)`;
   const remove = document.createElement("button"); remove.className = "remove"; remove.type = "button"; remove.textContent = "Remove";
   remove.addEventListener("click", (event) => { event.stopPropagation(); removeItem(item.id); });
   row.addEventListener("click", (event) => { if (event.target === row || event.target === meta || event.target === name || event.target === sub) selectItem(item.id, !selectedIds.has(item.id), event.shiftKey); });
@@ -215,7 +229,8 @@ function makeRow(item) {
     if (!dragIds.length || dragIds.includes(item.id)) return;
     const rect = row.getBoundingClientRect(); moveDraggedTo(item.id, event.clientY - rect.top < rect.height / 2);
   });
-  row.append(check, handle, thumb, meta, remove);
+  actions.append(rotate, remove);
+  row.append(check, handle, thumb, meta, actions);
   return row;
 }
 
@@ -223,7 +238,7 @@ function removeItem(id) {
   const index = items.findIndex((item) => item.id === id);
   if (index < 0) return;
   if (items[index].thumbUrl) URL.revokeObjectURL(items[index].thumbUrl);
-  items.splice(index, 1); selectedIds.delete(id); render(); notifyChange();
+  items.splice(index, 1); window.CometForgeLayout?.resetPageRotations(); selectedIds.delete(id); render(); notifyChange();
 }
 
 function moveDraggedTo(targetId, before) {
@@ -254,6 +269,7 @@ async function startForge() {
   const targetMb = Number(els.targetMb.value) || 20;
   const splitCount = Math.max(1, Math.min(100, Number.parseInt(els.splitCount.value, 10) || 5)); els.splitCount.value = String(splitCount);
   const options = {
+    ...getSnapshot().options,
     output_name: outputName, target_mb: targetMb, compress_mode: els.compressMode.value || "lossless",
     linearize: els.linearize.checked, dpi_fallback: 300, split_enabled: els.splitEnabled.checked,
     ...(els.splitEnabled.checked ? { split_count: splitCount } : {}),
@@ -428,15 +444,19 @@ function setupPopupSelect(select) {
     value.textContent = select.selectedOptions[0]?.textContent || ""; trigger.title = value.textContent;
     options.forEach((button, i) => button.setAttribute("aria-selected", String(i === select.selectedIndex)));
   }
-  function close(focus = false) { menu.classList.add("hidden"); trigger.setAttribute("aria-expanded", "false"); if (focus) trigger.focus(); }
-  function open() {
-    document.dispatchEvent(new CustomEvent("cometforge:closemenus", { detail: menu.id }));
-    menu.classList.remove("hidden"); trigger.setAttribute("aria-expanded", "true");
+  function close(focus = false) { window.CometForgeMotion?.closePopup(menu); menu.classList.add("hidden"); trigger.setAttribute("aria-expanded", "false"); if (focus) trigger.focus(); }
+  function positionMenu() {
     const rect = trigger.getBoundingClientRect();
     menu.style.width = "max-content"; menu.style.minWidth = `${rect.width}px`; menu.style.maxWidth = `${window.innerWidth - 16}px`;
     const bounds = menu.getBoundingClientRect();
     menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8))}px`;
     menu.style.top = `${Math.max(8, Math.min(rect.top - select.selectedIndex * 34 - 5, window.innerHeight - bounds.height - 8))}px`;
+  }
+  function open() {
+    document.dispatchEvent(new CustomEvent("cometforge:closemenus", { detail: menu.id }));
+    menu.classList.remove("hidden"); trigger.setAttribute("aria-expanded", "true");
+    positionMenu();
+    window.CometForgeMotion?.openPopup(menu);
     options[select.selectedIndex]?.focus({ preventScroll: true });
   }
   trigger.addEventListener("click", () => menu.classList.contains("hidden") ? open() : close(true));
@@ -458,7 +478,12 @@ function setupPopupSelect(select) {
   });
   document.addEventListener("pointerdown", (event) => { if (!wrapper.contains(event.target) && !menu.contains(event.target)) close(); });
   document.addEventListener("cometforge:closemenus", (event) => { if (event.detail !== menu.id) close(); });
-  window.addEventListener("resize", () => close()); window.addEventListener("scroll", () => close(), true);
+  window.addEventListener("resize", () => close());
+  window.addEventListener("scroll", (event) => {
+    // Focus and click can scroll the settings pane before their scroll event
+    // arrives. Keep the portal anchored instead of immediately dismissing it.
+    if (!menu.classList.contains("hidden") && !menu.contains(event.target)) positionMenu();
+  }, true);
   select.addEventListener("change", sync);
   select.before(wrapper); wrapper.append(trigger, select); select.hidden = true; document.body.append(menu); sync();
 }
@@ -469,7 +494,7 @@ function setupSidebar() {
   try { collapsed = localStorage.getItem("cometforge:sidebar-collapsed") === "true"; } catch {}
   function sync() {
     app.classList.toggle("sidebarCollapsed", collapsed); content.hidden = collapsed;
-    toggle.setAttribute("aria-expanded", String(!collapsed)); toggle.title = collapsed ? "Expand settings" : "Collapse settings";
+    toggle.setAttribute("aria-expanded", String(!collapsed)); toggle.title = collapsed ? "Expand navigation" : "Collapse navigation";
     toggle.querySelector("span").textContent = toggle.title;
   }
   toggle.addEventListener("click", () => { collapsed = !collapsed; try { localStorage.setItem("cometforge:sidebar-collapsed", String(collapsed)); } catch {} sync(); document.dispatchEvent(new CustomEvent("cometforge:closemenus")); });

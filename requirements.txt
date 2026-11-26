@@ -8,3 +8,5 @@ img2pdf==0.5.1
 # PikePDF 10 requires Python 3.10+. Version 9 has the APIs used by this app
 # and provides wheels for Python 3.9.
 pikepdf==9.11.0
+# Desktop launch is the default; --browser remains available for self-hosting.
+pywebview==6.1

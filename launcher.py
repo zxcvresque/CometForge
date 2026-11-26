@@ -1,4 +1,4 @@
-"""CometForge: browser by default for source, native window for installers."""
+"""CometForge desktop application; pass --browser for explicit self-hosting."""
 from __future__ import annotations
 
 import argparse
@@ -72,11 +72,12 @@ def wait_for_server(server, url: str) -> None:
     raise RuntimeError("CometForge could not start. See the launcher log in the application data folder.")
 
 
-SETUP_HTML = """<!doctype html><html><meta charset="utf-8"><style>
-body{font:16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#151515;color:#eee;padding:32px;line-height:1.5}
-h1{font-size:25px}label{display:block;margin:22px 0}input{accent-color:#65d9b4;width:18px;height:18px;vertical-align:middle}
-button{background:#65d9b4;color:#101010;border:0;border-radius:10px;padding:12px 24px;font-weight:650;font-size:16px;cursor:pointer}
-a{color:#65d9b4}.muted{color:#aaa;font-size:13px}</style>
+SETUP_HTML = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{font:15px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:radial-gradient(ellipse at top left,#27203e,transparent 70%),#10121b;color:#eef0f8;padding:28px;line-height:1.5;color-scheme:dark}
+h1{font-size:25px;line-height:1.2;margin-top:8px}label{display:flex;align-items:center;gap:10px;margin:22px 0}input{accent-color:#a7a1ff;width:18px;height:18px;flex-shrink:0}
+button{background:#6659d5;color:white;border:1px solid #bcb4ff55;border-radius:10px;padding:11px 23px;font-weight:600;font-size:15px;cursor:pointer;box-shadow:inset 0 1px #ffffff26,0 3px 9px #0003;transition:background 120ms ease,box-shadow 120ms ease}
+button:hover{background:#7063dc}button:active{box-shadow:inset 0 2px 4px #0004}button:focus-visible,input:focus-visible{outline:2px solid #b6c8ff;outline-offset:4px}
+a{color:#b6c8ff}.muted{color:#b0b4c7;font-size:13px}@media(prefers-reduced-motion:reduce){button{transition:none}}</style>
 <h1>Set up CometForge</h1><p>The PDF engine and required dependencies are included.</p>
 <label><input type="checkbox" id="gs" checked> Enable bundled Ghostscript for target-fit compression</label>
 <p class="muted">Ghostscript is optional and distributed under the GNU AGPL v3. See the included third-party notices and source references.</p>
@@ -100,14 +101,17 @@ def configure_install(data: Path, ghostscript: bool) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--browser", action="store_true", help="Open in the default browser")
-    parser.add_argument("--desktop", action="store_true", help="Open in a native app window")
-    parser.add_argument("--no-browser", action="store_true", help="Run the server without opening a window")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--browser", action="store_true", help="Open in the default browser")
+    mode.add_argument("--desktop", action="store_true", help="Open in a dedicated app window (default)")
+    mode.add_argument("--no-browser", action="store_true", help="Run the server without opening a window")
     parser.add_argument("--skip-setup", action="store_true", help="Use bundled Ghostscript without the first-run screen")
     parser.add_argument("--setup", action="store_true", help="Show dependency preferences again")
     parser.add_argument("--port", type=int, default=None,
                         help="Listen port (default: 5173, or the remembered desktop port)")
     parser.add_argument("--version", action="version", version=__version__)
+    parser.add_argument("--smoke-test", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--smoke-close", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--register-shortcuts", nargs="+", metavar="LINK", help=argparse.SUPPRESS)
     parser.add_argument("--configure-install", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--ghostscript", choices=("enabled", "disabled"), help=argparse.SUPPRESS)
@@ -122,12 +126,12 @@ def main() -> int:
         configure_install(support_dir(), args.ghostscript == "enabled")
         return 0
     installed = bool(getattr(sys, "frozen", False) or (Path(__file__).parent / "installed.json").is_file())
-    desktop = (installed or args.desktop) and not args.browser and not args.no_browser
-    data = support_dir() if installed else Path(__file__).resolve().parent
+    desktop = not args.browser and not args.no_browser
+    data = support_dir() if installed or desktop else Path(__file__).resolve().parent
     data.mkdir(parents=True, exist_ok=True)
     settings_path = data / "settings.json"
     settings = {}
-    if installed and settings_path.is_file():
+    if (installed or desktop) and settings_path.is_file():
         try:
             loaded = json.loads(settings_path.read_text(encoding="utf-8"))
             settings = loaded if isinstance(loaded, dict) else {}
@@ -139,16 +143,22 @@ def main() -> int:
         log = open(data / "launcher.log", "a", encoding="utf-8", buffering=1)
         sys.stdout = log
         sys.stderr = log
+    if desktop:
+        try:
+            import webview
+        except ImportError as exc:
+            raise RuntimeError("The desktop runtime is missing. Reinstall CometForge or install requirements.txt. "
+                               "Use --browser only if you want to self-host in a browser.") from exc
     import uvicorn
     from server import app
-    remembered_port = settings.get("port", 5173) if installed and desktop else 5173
+    remembered_port = settings.get("port", 5173) if desktop else 5173
     if not isinstance(remembered_port, int) or not 1 <= remembered_port <= 65535:
         remembered_port = 5173
     preferred_port = args.port if args.port is not None else remembered_port
     if not 0 <= preferred_port <= 65535:
         parser.error("--port must be between 0 and 65535")
     port = free_port(preferred_port)
-    if installed and desktop:
+    if desktop:
         settings["port"] = port
         settings_path.write_text(json.dumps(settings), encoding="utf-8")
     url = f"http://127.0.0.1:{port}/"
@@ -164,7 +174,6 @@ def main() -> int:
         if os.name == "nt":
             from windows_app import set_process_identity
             set_process_identity()
-        import webview
         webview.settings["ALLOW_DOWNLOADS"] = True
         needs_setup = ("ghostscript" not in settings or args.setup) and not args.skip_setup
         class SetupAPI:
@@ -198,7 +207,12 @@ def main() -> int:
         try:
             webview_data = data / "webview"
             webview_data.mkdir(parents=True, exist_ok=True)
-            webview.start(gui="cocoa" if sys.platform == "darwin" else "edgechromium",
+            smoke = None
+            if args.smoke_test:
+                from desktop_smoke import run as run_smoke
+                smoke = lambda: run_smoke(window, url, args.smoke_test, args.smoke_close)
+            gui = "cocoa" if sys.platform == "darwin" else "edgechromium" if os.name == "nt" else None
+            webview.start(func=smoke, gui=gui,
                           private_mode=False, storage_path=str(webview_data))
         finally:
             server.should_exit = True

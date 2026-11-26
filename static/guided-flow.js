@@ -2,25 +2,27 @@
 (() => {
   const api = window.CometForge;
   const id = (name) => document.getElementById(name);
-  const sections = ['sourceStep', 'exportStep', 'reviewStep'].map(id);
+  const sections = ['sourceStep', 'layoutStep', 'exportStep', 'reviewStep'].map(id);
   const steps = [...id('flowSteps').querySelectorAll('button')];
   const next = id('flowNext'), back = id('flowBack'), forge = id('forgeBtn');
   let step = 1;
   let busy = false;
 
   function setStep(value, focus = true) {
-    step = Math.max(1, Math.min(3, value));
+    const previous = step;
+    step = Math.max(1, Math.min(4, value));
     document.dispatchEvent(new CustomEvent('cometforge:closemenus'));
     sections.forEach((section, index) => { section.hidden = index !== step - 1; });
     steps.forEach((button, index) => {
       if (index === step - 1) button.setAttribute('aria-current', 'step');
       else button.removeAttribute('aria-current');
     });
-    next.classList.toggle('hidden', step === 3);
-    forge.classList.toggle('hidden', step !== 3);
+    next.classList.toggle('hidden', step === 4);
+    forge.classList.toggle('hidden', step !== 4);
     refresh();
     id('flowBody').scrollTop = 0;
     if (focus) sections[step - 1].querySelector('h2').focus({preventScroll: true});
+    window.dispatchEvent(new CustomEvent('cometforge:step', {detail:{step,previous}}));
   }
 
   function refresh() {
@@ -33,6 +35,9 @@
     id('flowSummary').textContent = count ? `${parts} PDF${parts === 1 ? '' : 's'} · ${options.compress_mode === 'targetfit' ? `${options.target_mb} MB cap each` : modes[options.compress_mode]}` : 'Add sources to begin';
     const rows = [
       ['Name', options.output_name], ['Sources', `${count} file${count === 1 ? '' : 's'}`],
+      ['Page layout', `${({original:'Original size',letter:'US Letter',legal:'US Legal'}[options.page_size] || (options.page_size || 'original').toUpperCase())} · ${options.orientation || 'auto'}`],
+      ['Fit / margins', `${({contain:'Fit inside',cover:'Fill (crop)',actual:'Actual size'}[options.fit] || 'Fit inside')} · ${options.margin === 'custom' ? `${options.margin_mm} mm` : options.margin || 'none'}`],
+      ['Rotation', `${options.rotation || 0}°${Object.keys(options.page_rotations || {}).length ? ' + page turns' : ''}${(options.source_rotations || []).some(Boolean) ? ' + file turns' : ''}`],
       ['Compression', modes[options.compress_mode]],
       ['Size cap', options.compress_mode === 'targetfit' ? `${options.target_mb} MB per PDF` : 'Not enforced'],
       ['Output', `${parts} PDF${parts === 1 ? '' : 's'}`], ['Fast web view', options.linearize ? 'On' : 'Off'],
@@ -65,8 +70,9 @@
   window.addEventListener('cometforge:change', refresh);
   window.addEventListener('cometforge:busy', (event) => {
     busy = Boolean(event.detail);
-    ['outName', 'compressModeTrigger', 'splitEnabled', 'splitCount', 'linearize', 'pickBtn', 'pickFolderBtn', 'clearBtn'].forEach((name) => { id(name).disabled = busy; });
+    ['outName', 'compressModeTrigger', 'splitEnabled', 'splitCount', 'linearize', 'pickBtn', 'pickFolderBtn', 'clearBtn', 'pageSizeTrigger', 'pageOrientationTrigger', 'pageFitTrigger', 'pageMarginTrigger', 'marginMm', 'pageRotationTrigger', 'rotateAllLeft', 'rotateAllRight', 'rotatePages', 'rotatePagesLeft', 'rotatePagesRight', 'resetPageRotations'].forEach((name) => { id(name).disabled = busy; });
     if (!busy) id('splitCount').disabled = !id('splitEnabled').checked;
+    document.querySelectorAll('.rotateSource,.remove,.selectItem').forEach((control) => { control.disabled = busy; });
     refresh();
   });
   setStep(1, false);
