@@ -118,3 +118,12 @@ test('details only acknowledge opening without animating layout dimensions',()=>
   f.events.toggle({target:details});assert.equal(summary.animations.length,0);assert.equal(content.animations.length,1);
   assert.ok(content.animations[0].frames.every(frame=>Object.keys(frame).every(key=>key==='opacity')));
 });
+
+test('popup exit proxies stay inside a modal dialog top layer',()=>{
+  const f=fixture(),menu=new Element('modalPaperMenu');
+  const dialog={append(node){this.last=node;}};
+  menu.closest=selector=>selector==='dialog'?dialog:null;
+  f.api.closePopup(menu);
+  assert.ok(dialog.last);assert.equal(f.document.body.last,undefined);
+  assert.equal(dialog.last.inert,true);assert.equal(dialog.last.attrs['aria-hidden'],'true');
+});

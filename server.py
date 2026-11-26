@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Dict, List, Literal, Optional, Sequence
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.concurrency import run_in_threadpool
 import img2pdf
@@ -540,6 +540,119 @@ def preview_source(source_id: str, payload: dict = Body(...)) -> dict:
         return _estimate_outputs(Path(source["built_path"]), options)
     except (ValueError, TypeError) as error:
         raise HTTPException(400, str(error))
+
+
+SOURCE_PREVIEW_MAX_ENTRIES = 32
+SOURCE_PREVIEW_MAX_BYTES = 128 * MB
+
+
+def _trim_source_previews(directory: Path, keep: Path) -> None:
+    """Bound reusable raster previews; the currently returned bytes are in memory."""
+    entries = sorted(directory.glob("*.png"), key=lambda item: item.stat().st_mtime, reverse=True)
+    total = 0
+    for index, path in enumerate(entries):
+        total += path.stat().st_size
+        if path != keep and (index >= SOURCE_PREVIEW_MAX_ENTRIES or total > SOURCE_PREVIEW_MAX_BYTES):
+            path.unlink(missing_ok=True)
+            path.with_suffix(".json").unlink(missing_ok=True)
+
+
+@app.post("/api/source/{source_id}/render")
+def render_source_page(source_id: str, payload: dict = Body(...)) -> Response:
+    """Render one staged page with the exact, uncompressed export geometry.
+
+    Page numbers refer to the assembled queue. Only that page is extracted and
+    transformed, so adjusting a margin never rebuilds the whole document.
+    """
+    def whole_number(value, label, minimum, maximum):
+        try:
+            number = float(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise HTTPException(400, f"{label} must be a whole number.") from error
+        if isinstance(value, bool) or not math.isfinite(number) or number != int(number):
+            raise HTTPException(400, f"{label} must be a whole number.")
+        if not minimum <= number <= maximum:
+            raise HTTPException(400, f"{label} must be between {minimum} and {maximum}.")
+        return int(number)
+
+    source = _ready_source(source_id)
+    page = whole_number(payload.get("page", 1), "Preview page", 1, source["page_count"])
+    requested_dpi = whole_number(payload.get("dpi", 144), "Preview DPI", 72, 576)
+    options = _request_options(payload)
+    if options["dpi_fallback"] != source["dpi_fallback"]:
+        raise HTTPException(409, "Image DPI changed. Upload the queue again.")
+    counts = source.get("source_page_counts", [])
+    try:
+        _validate_page_edits(options, source["page_count"], counts)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    source_index = 0
+    offset = 0
+    for index, count in enumerate(counts):
+        if offset < page <= offset + count:
+            source_index = index
+            break
+        offset += count
+    file_angle = options["source_rotations"][source_index] if options["source_rotations"] else 0
+    local_options = {**options, "source_rotations": [], "page_rotations": {},
+                     "rotation": (options["rotation"] + file_angle + options["page_rotations"].get(str(page), 0)) % 360}
+    geometry = {key: local_options[key] for key in ("page_size", "orientation", "fit", "margin", "margin_mm", "rotation")}
+    key = hashlib.sha256(json.dumps({"page": page, "dpi": requested_dpi, **geometry}, sort_keys=True).encode()).hexdigest()
+    try:
+        source_dir = (WORK_DIR / source_id).resolve(strict=True)
+        built = Path(source["built_path"]).resolve(strict=True)
+        if built != source_dir / "built.pdf":
+            raise OSError("Unexpected staged source path")
+    except (OSError, RuntimeError):
+        raise HTTPException(404, "Source has expired. Add these files again.")
+    directory = source_dir / "layout-previews"
+    destination = directory / f"{key}.png"
+    metadata_path = destination.with_suffix(".json")
+    with render_lock:
+        directory.mkdir(exist_ok=True)
+        if not destination.is_file() or not metadata_path.is_file():
+            ghostscript = _find_ghostscript()
+            if not ghostscript:
+                raise HTTPException(503, "Live page preview requires Ghostscript. Install or enable it to preview layout changes.")
+            token = uuid.uuid4().hex[:10]
+            extracted = directory / f".{token}-source.pdf"
+            transformed = directory / f".{token}-layout.pdf"
+            temporary = directory / f".{token}.png"
+            try:
+                _extract_pages(built, extracted, page - 1, page)
+                rendered_pdf = transformed if _apply_page_layout(extracted, transformed, local_options, [1]) else extracted
+                width, height = _comparison_page_geometry(rendered_pdf, 1)
+                effective_dpi = _comparison_dpi([rendered_pdf], 1, requested_dpi)
+                dpi_text = f"{effective_dpi:.6f}".rstrip("0").rstrip(".")
+                command = [ghostscript, "-q", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-sDEVICE=png16m",
+                           f"-r{dpi_text}", "-dUseCropBox", "-dTextAlphaBits=4", "-dGraphicsAlphaBits=4",
+                           "-dFirstPage=1", "-dLastPage=1", f"-sOutputFile={temporary}", str(rendered_pdf)]
+                result = _run_pdf_tool(command, timeout=60)
+                if result.returncode != 0 or not temporary.is_file():
+                    raise HTTPException(503, "Could not render this page. Try another source or export the PDF.")
+                temporary.replace(destination)
+                metadata_path.write_text(json.dumps({"dpi": effective_dpi, "width": width, "height": height}), encoding="utf-8")
+            except ValueError as error:
+                raise HTTPException(400, str(error)) from error
+            except subprocess.TimeoutExpired:
+                raise HTTPException(503, "Live page preview timed out. Try a smaller source.")
+            except OSError:
+                raise HTTPException(503, "The preview engine could not start. Install or enable Ghostscript.")
+            finally:
+                extracted.unlink(missing_ok=True)
+                transformed.unlink(missing_ok=True)
+                temporary.unlink(missing_ok=True)
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        destination.touch()
+        image_bytes = destination.read_bytes()
+        _trim_source_previews(directory, destination)
+    effective_dpi = metadata["dpi"]
+    return Response(image_bytes, media_type="image/png", headers={
+        "Cache-Control": "private, no-cache", "X-Render-DPI": f"{effective_dpi:.6f}".rstrip("0").rstrip("."),
+        "X-Render-Requested-DPI": str(requested_dpi), "X-Render-Limited": str(effective_dpi < requested_dpi).lower(),
+        "X-Page-Width": f"{metadata['width']:.6f}", "X-Page-Height": f"{metadata['height']:.6f}",
+        "X-Preview-Page": str(page),
+    })
 
 
 @app.get("/")

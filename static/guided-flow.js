@@ -72,7 +72,7 @@
     busy = Boolean(event.detail);
     ['outName', 'compressModeTrigger', 'splitEnabled', 'splitCount', 'linearize', 'pickBtn', 'pickFolderBtn', 'clearBtn', 'pageSizeTrigger', 'pageOrientationTrigger', 'pageFitTrigger', 'pageMarginTrigger', 'marginMm', 'pageRotationTrigger', 'rotateAllLeft', 'rotateAllRight', 'rotatePages', 'rotatePagesLeft', 'rotatePagesRight', 'resetPageRotations'].forEach((name) => { id(name).disabled = busy; });
     if (!busy) id('splitCount').disabled = !id('splitEnabled').checked;
-    document.querySelectorAll('.rotateSource,.remove,.selectItem').forEach((control) => { control.disabled = busy; });
+    document.querySelectorAll('.rotateSource,.remove,.selectItem,.sourceThumbButton,.sourceNameButton').forEach((control) => { control.disabled = busy; });
     refresh();
   });
   setStep(1, false);

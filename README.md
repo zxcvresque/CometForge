@@ -24,6 +24,7 @@
 - Follow a focused Sources → Layout → Export → Review workflow.
 - Navigate with a compact Prism-style glass sidebar; detailed controls live in the workspace.
 - Rotate all pages, individual source files, or selected PDF page ranges in 90° steps.
+- Click an image or PDF thumbnail to inspect its pages and rotate them before exporting. The preview updates as you change paper size, orientation, fit, or margins.
 - Choose original dimensions, A0–A6, B4/B5, US Letter, Legal, Tabloid, Executive, or 4×6 / 5×7 photo paper.
 - Set portrait or landscape orientation, fit content within the page, fill with cropping, or preserve actual size.
 - Choose no, small, medium, large, or custom margins. Unused page space is white.
@@ -49,6 +50,8 @@ The macOS build targets Apple silicon on macOS 14+. The Windows build targets Wi
 ## Page layout
 
 The Layout step applies to PDFs and images before compression and splitting. Source-file rotations follow their files when you reorder the queue. Use the page-range rotation controls to correct individual pages in the assembled document; page numbers follow the current queue order. Original dimensions preserve mixed-size documents by default.
+
+The page-size menu keeps Original, A4, and US Letter close at hand; open **More sizes** for the other formats. Click a source thumbnail to open its page preview. Preview controls share the export settings, so layout changes are reflected before you Forge. Live rendering requires Ghostscript and shows layout before compression.
 
 **Fit** keeps all content visible, **Fill** crops content to fill the printable area, and **Actual size** keeps the original scale and may crop oversized content. Margins and unused space have a white background. The exported layout is also used for before/after comparison so both sides stay aligned.
 
@@ -96,11 +99,12 @@ Run the PDF and interface checks from the project folder:
 
 ```sh
 .venv/bin/python scripts/test_page_layout.py
+.venv/bin/python scripts/test_live_preview.py
 .venv/bin/python scripts/test_options_api.py
 .venv/bin/python scripts/test_windows_desktop.py
 .venv/bin/python scripts/verify_v1_1.py
 .venv/bin/python scripts/test_hd_render.py
-node --test scripts/test_guided_ui.cjs scripts/test_comparison_ui.cjs scripts/test_layout_ui.cjs scripts/test_themes_ui.cjs scripts/test_motion_ui.cjs
+node --test scripts/test_guided_ui.cjs scripts/test_comparison_ui.cjs scripts/test_layout_ui.cjs scripts/test_themes_ui.cjs scripts/test_motion_ui.cjs scripts/test_source_preview_ui.cjs
 ```
 
 The Windows release workflow also installs the built Setup EXE and checks its native window, PDF export, preview rendering, shutdown, and absence of visible terminal windows.

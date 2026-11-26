@@ -81,10 +81,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/test_page_layout.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/test_live_preview.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/test_options_api.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test interface controllers
-        run: node --test scripts/test_guided_ui.cjs scripts/test_comparison_ui.cjs scripts/test_layout_ui.cjs scripts/test_themes_ui.cjs scripts/test_motion_ui.cjs
+        run: node --test scripts/test_guided_ui.cjs scripts/test_comparison_ui.cjs scripts/test_layout_ui.cjs scripts/test_themes_ui.cjs scripts/test_motion_ui.cjs scripts/test_source_preview_ui.cjs
       - name: Launch installed desktop app and check for console windows
         shell: pwsh
         run: |
@@ -105,13 +107,21 @@ jobs:
             packaging/dist/*-Windows-x64-Setup.exe
             packaging/dist/SHA256SUMS-*-Windows.txt
           if-no-files-found: error
+      - name: Gather desktop application diagnostics
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force qa-diagnostics | Out-Null
+          if (Test-Path windows-build.log) { Copy-Item windows-build.log qa-diagnostics }
+          $data = Join-Path $env:LOCALAPPDATA 'CometForge\data'
+          foreach ($name in @('launcher.log', 'desktop-smoke-result.json')) {
+            $source = Join-Path $data $name
+            if (Test-Path $source) { Copy-Item $source qa-diagnostics }
+          }
       - name: Retain desktop application diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: windows-desktop-application-log
-          path: |
-            windows-build.log
-            ~/AppData/Local/CometForge/data/launcher.log
-            ~/AppData/Local/CometForge/data/desktop-smoke-result.json
+          path: qa-diagnostics/
           if-no-files-found: ignore

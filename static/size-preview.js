@@ -146,5 +146,19 @@
     } catch (error) { document.getElementById('status').textContent = error.message; }
     finally { forgeButton.disabled = false; window.dispatchEvent(new CustomEvent('cometforge:busy', {detail: false})); }
   }, true);
+  window.CometForgeSources = {
+    async ensureDetails(state = snapshot()) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const sourceId = await ensureSource(state);
+        try {
+          const metadata = await request(`/api/source/${sourceId}`);
+          return {sourceId, pageCount:metadata.page_count, sourcePageCounts:metadata.source_page_counts || []};
+        } catch (error) {
+          if (error.status !== 404 || attempt) throw error;
+          sourceCache.delete(queueKey(state.files));
+        }
+      }
+    }
+  };
   changed();
 })();

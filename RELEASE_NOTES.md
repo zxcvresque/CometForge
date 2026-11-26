@@ -9,6 +9,8 @@ CometForge now opens as a desktop application by default, with a dedicated page-
 - Four-step workflow: Sources → Layout → Export → Review.
 - Compact Prism-style navigation rail with detailed settings in the workspace.
 - Rotate every page, individual source files, or selected page ranges in 90° increments.
+- Open source thumbnails in a live page preview; rotation, paper, fit, orientation, and margin changes update before export.
+- Compact Original / A4 / US Letter menu with additional formats under More sizes; collapsed navigation retains its step icons.
 - Preserve original dimensions or choose A0–A6, B4/B5, US Letter, Legal, Tabloid, Executive, or 4×6 / 5×7 photo paper, with automatic, portrait, or landscape orientation.
 - Fit all content, fill the printable area with centered cropping, or retain actual size.
 - No, small, medium, large, and custom millimeter margins. Unused page space is white.

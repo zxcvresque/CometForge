@@ -67,7 +67,7 @@
     exit.querySelectorAll('button,input,a,[tabindex]').forEach(node => { node.tabIndex = -1; });
     Object.assign(exit.style,{position:'fixed',left:`${bounds.left}px`,top:`${bounds.top}px`,
       width:`${bounds.width}px`,height:`${bounds.height}px`,minWidth:'0',maxWidth:'none',margin:'0'});
-    document.body.append(exit);
+    (menu.closest?.('dialog') || document.body).append(exit);
     exits.set(menu,exit);
     const active = animate(exit,[{opacity:Number.isFinite(opacity) ? opacity : 1},{opacity:0}],media?.matches ? 70 : 110);
     const clean = () => { if (exits.get(menu) === exit) exits.delete(menu); exit.remove(); };

@@ -181,10 +181,14 @@ function makeRow(item) {
   check.addEventListener("click", (event) => { event.stopPropagation(); selectItem(item.id, event.target.checked, event.shiftKey); });
   const handle = document.createElement("div");
   handle.className = "handle"; handle.innerHTML = '<svg viewBox="0 0 18 24" aria-hidden="true"><path d="M6 6h.01M12 6h.01M6 12h.01M12 12h.01M6 18h.01M12 18h.01"/></svg>'; handle.title = "Drag selected files to reorder";
+  const thumbButton = document.createElement("button");
+  thumbButton.type = "button"; thumbButton.className = "sourceThumbButton";
+  thumbButton.setAttribute("aria-label", `Preview ${item.name}`); thumbButton.title = "Preview and adjust page layout";
+  thumbButton.addEventListener("click", event => { event.stopPropagation(); window.CometForgeSourcePreview?.open(item.id, thumbButton); });
   const thumb = document.createElement("img");
   thumb.className = "thumb"; thumb.src = item.kind === "img" && item.thumbUrl ? item.thumbUrl : pdfThumbnail(); thumb.alt = "";
   const meta = document.createElement("div"); meta.className = "meta";
-  const name = document.createElement("div"); name.className = "name"; name.textContent = item.name; name.title = item.name;
+  const name = document.createElement("button"); name.type = "button"; name.className = "name sourceNameButton"; name.addEventListener("click", event => { event.stopPropagation(); window.CometForgeSourcePreview?.open(item.id, name); }); name.textContent = item.name; name.title = item.name;
   const sub = document.createElement("div"); sub.className = "sub";
   const badge = document.createElement("span"); badge.className = `badge ${item.kind === "pdf" ? "pdf" : ""}`; badge.textContent = item.kind.toUpperCase();
   const size = document.createElement("span"); size.textContent = fmtMB(item.size || 0); sub.append(badge, size); meta.append(name, sub);
@@ -230,7 +234,8 @@ function makeRow(item) {
     const rect = row.getBoundingClientRect(); moveDraggedTo(item.id, event.clientY - rect.top < rect.height / 2);
   });
   actions.append(rotate, remove);
-  row.append(check, handle, thumb, meta, actions);
+  thumbButton.append(thumb);
+  row.append(check, handle, thumbButton, meta, actions);
   return row;
 }
 
@@ -421,6 +426,7 @@ async function pollJob(jobId, options) {
 }
 
 function setupPopupSelect(select) {
+  if (document.getElementById(`${select.id}Trigger`)) return;
   const wrapper = document.createElement("div"); wrapper.className = "popupSelect";
   const trigger = document.createElement("button"); trigger.type = "button"; trigger.className = "popupTrigger"; trigger.id = `${select.id}Trigger`;
   trigger.setAttribute("aria-haspopup", "listbox"); trigger.setAttribute("aria-expanded", "false");
@@ -430,9 +436,17 @@ function setupPopupSelect(select) {
   const value = document.createElement("span"); value.className = "popupValue";
   const chevron = document.createElement("span"); chevron.className = "popupChevron"; chevron.setAttribute("aria-hidden", "true");
   chevron.innerHTML = '<svg viewBox="0 0 12 16"><path d="m3 5 3-3 3 3M3 11l3 3 3-3"/></svg>';
+  if (select.id === "appTheme") {
+    const icon = document.createElement("span"); icon.className = "themeRailIcon"; icon.setAttribute("aria-hidden","true");
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.5 1.5 0 0 1 1.2-2.5H17a4 4 0 0 0 4-4A9 9 0 0 0 12 3Z"/><circle cx="7.5" cy="10" r=".8"/><circle cx="11" cy="6.8" r=".8"/><circle cx="16" cy="8" r=".8"/></svg>';
+    trigger.append(icon);
+  }
   trigger.append(value, chevron);
   const menu = document.createElement("div"); menu.className = "popupMenu hidden"; menu.id = `${select.id}Menu`; menu.setAttribute("role", "listbox");
-  menu.setAttribute("aria-label", label?.textContent || select.getAttribute("aria-label") || "Choose an option"); trigger.setAttribute("aria-controls", menu.id);
+  const baseLabel = label?.textContent || select.getAttribute("aria-label") || "Choose an option";
+  menu.setAttribute("aria-label", baseLabel); trigger.setAttribute("aria-controls", menu.id);
+  const common = select.dataset.commonValues ? select.dataset.commonValues.split(',') : null;
+  let moreView = false;
   const options = Array.from(select.options).map((option) => {
     const button = document.createElement("button"); button.type = "button"; button.className = "popupOption"; button.setAttribute("role", "option"); button.tabIndex = -1;
     const checkmark = document.createElement("span"); checkmark.className = "popupCheck"; checkmark.textContent = "✓"; checkmark.setAttribute("aria-hidden", "true");
@@ -440,60 +454,81 @@ function setupPopupSelect(select) {
     button.addEventListener("click", () => { select.value = option.value; select.dispatchEvent(new Event("change", { bubbles: true })); close(true); });
     menu.append(button); return button;
   });
+  let moreButton, backButton;
+  if (common) {
+    moreButton = document.createElement('button'); moreButton.type = 'button'; moreButton.className = 'popupOption popupMore'; moreButton.setAttribute('role','option'); moreButton.tabIndex = -1;
+    moreButton.innerHTML = '<span class="popupCheck" aria-hidden="true"></span><span>More sizes…</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 6 6-6 6"/></svg>';
+    backButton = document.createElement('button'); backButton.type = 'button'; backButton.className = 'popupOption popupBack'; backButton.setAttribute('role','option'); backButton.tabIndex = -1;
+    backButton.innerHTML = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12 4-6 6 6 6"/></svg><span>Common sizes</span>';
+    moreButton.addEventListener('click', () => { moreView = true; syncVisibility(); positionMenu(); (options.find(button => !button.hidden) || backButton).focus({preventScroll:true}); });
+    backButton.addEventListener('click', () => { moreView = false; syncVisibility(); positionMenu(); moreButton.focus({preventScroll:true}); });
+    menu.prepend(backButton); menu.append(moreButton);
+  }
+  function activeOptions() { return Array.from(menu.querySelectorAll('[role=option]')).filter(button => !button.hidden); }
+  function syncVisibility() {
+    if (!common) return;
+    options.forEach((button,index) => { button.hidden = moreView ? common.includes(select.options[index].value) : !common.includes(select.options[index].value); });
+    moreButton.hidden = moreView; backButton.hidden = !moreView;
+    menu.classList.toggle('moreSizesMenu',moreView);
+    menu.setAttribute('aria-label', moreView ? 'More paper sizes' : baseLabel);
+  }
   function sync() {
     value.textContent = select.selectedOptions[0]?.textContent || ""; trigger.title = value.textContent;
     options.forEach((button, i) => button.setAttribute("aria-selected", String(i === select.selectedIndex)));
+    syncVisibility();
   }
   function close(focus = false) { window.CometForgeMotion?.closePopup(menu); menu.classList.add("hidden"); trigger.setAttribute("aria-expanded", "false"); if (focus) trigger.focus(); }
   function positionMenu() {
     const rect = trigger.getBoundingClientRect();
     menu.style.width = "max-content"; menu.style.minWidth = `${rect.width}px`; menu.style.maxWidth = `${window.innerWidth - 16}px`;
+    menu.style.maxHeight = `${Math.min(420,window.innerHeight - 24)}px`;
     const bounds = menu.getBoundingClientRect();
     menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8))}px`;
-    menu.style.top = `${Math.max(8, Math.min(rect.top - select.selectedIndex * 34 - 5, window.innerHeight - bounds.height - 8))}px`;
+    const below = rect.bottom + 5;
+    menu.style.top = `${Math.max(8, below + bounds.height <= window.innerHeight - 8 ? below : Math.min(rect.top - bounds.height - 5, window.innerHeight - bounds.height - 8))}px`;
   }
   function open() {
     document.dispatchEvent(new CustomEvent("cometforge:closemenus", { detail: menu.id }));
+    moreView = false; syncVisibility();
     menu.classList.remove("hidden"); trigger.setAttribute("aria-expanded", "true");
     positionMenu();
     window.CometForgeMotion?.openPopup(menu);
-    options[select.selectedIndex]?.focus({ preventScroll: true });
+    const selected = options[select.selectedIndex];
+    (selected && !selected.hidden ? selected : moreButton || activeOptions()[0])?.focus({ preventScroll: true });
   }
   trigger.addEventListener("click", () => menu.classList.contains("hidden") ? open() : close(true));
   trigger.addEventListener("keydown", (event) => { if (["ArrowDown", "ArrowUp", " "].includes(event.key)) { event.preventDefault(); open(); } });
   let search = "", searchTime = 0;
   menu.addEventListener("keydown", (event) => {
-    const current = options.indexOf(document.activeElement);
-    if (event.key === "Escape") { event.preventDefault(); close(true); }
+    const visibleOptions = activeOptions(), current = visibleOptions.indexOf(document.activeElement);
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true); }
     else if (event.key === "Tab") close(false);
     else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       event.preventDefault();
-      const next = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
-      options[next].focus();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? visibleOptions.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + visibleOptions.length) % visibleOptions.length;
+      visibleOptions[next]?.focus();
     } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && event.key !== " ") {
       search = Date.now() - searchTime > 700 ? event.key : search + event.key; searchTime = Date.now();
-      const match = Array.from(select.options).findIndex((option) => option.text.toLowerCase().startsWith(search.toLowerCase()));
-      if (match >= 0) { event.preventDefault(); options[match].focus(); }
+      const match = visibleOptions.find(button => button.textContent.trim().replace(/^✓\s*/,'').toLowerCase().startsWith(search.toLowerCase()));
+      if (match) { event.preventDefault(); match.focus(); }
     }
   });
   document.addEventListener("pointerdown", (event) => { if (!wrapper.contains(event.target) && !menu.contains(event.target)) close(); });
   document.addEventListener("cometforge:closemenus", (event) => { if (event.detail !== menu.id) close(); });
   window.addEventListener("resize", () => close());
-  window.addEventListener("scroll", (event) => {
-    // Focus and click can scroll the settings pane before their scroll event
-    // arrives. Keep the portal anchored instead of immediately dismissing it.
-    if (!menu.classList.contains("hidden") && !menu.contains(event.target)) positionMenu();
-  }, true);
+  window.addEventListener("scroll", (event) => { if (!menu.classList.contains("hidden") && !menu.contains(event.target)) positionMenu(); }, true);
   select.addEventListener("change", sync);
-  select.before(wrapper); wrapper.append(trigger, select); select.hidden = true; document.body.append(menu); sync();
+  select.before(wrapper); wrapper.append(trigger, select); select.hidden = true;
+  (select.closest('dialog') || document.body).append(menu); sync();
 }
 
 function setupSidebar() {
+  document.querySelectorAll("#flowSteps button").forEach(button => { button.title = button.querySelector(".navLabel")?.textContent || button.textContent.trim(); button.setAttribute("aria-label", button.title); });
   const app = document.getElementById("app"), toggle = document.getElementById("sidebarToggle"), content = document.getElementById("sidebarContent");
   let collapsed = false;
   try { collapsed = localStorage.getItem("cometforge:sidebar-collapsed") === "true"; } catch {}
   function sync() {
-    app.classList.toggle("sidebarCollapsed", collapsed); content.hidden = collapsed;
+    app.classList.toggle("sidebarCollapsed", collapsed); content.hidden = false;
     toggle.setAttribute("aria-expanded", String(!collapsed)); toggle.title = collapsed ? "Expand navigation" : "Collapse navigation";
     toggle.querySelector("span").textContent = toggle.title;
   }
@@ -534,6 +569,6 @@ els.list.addEventListener("drop", (event) => {
   const remaining = items.filter((item) => !dragIds.includes(item.id));
   useManualOrder(); items = [...remaining, ...moving]; render(); notifyChange();
 });
-window.CometForge = { getSnapshot, pollJob, startForge, setStatus, setHint, addFiles, showResults, loadOutputView, fmtMB, closeResults, dragActive: () => dragIds.length > 0 };
+window.CometForge = { setupPopupSelect, getSources: () => items.map(item => ({id:item.id,file:item.file,name:item.name,kind:item.kind,rotation:item.rotation || 0})), getSnapshot, pollJob, startForge, setStatus, setHint, addFiles, showResults, loadOutputView, fmtMB, closeResults, dragActive: () => dragIds.length > 0 };
 document.querySelectorAll("select[data-popup-select]").forEach(setupPopupSelect); setupSidebar();
 updateTarget(els.targetMb.value); updateSplitControl(); updateCompressionNote(); render();

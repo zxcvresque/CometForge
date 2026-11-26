@@ -57,6 +57,12 @@
     } catch (error) { id('rotatePages').setAttribute('aria-invalid','true'); id('pageRotationStatus').textContent = error.message; }
   }
   function resetPageRotations() { for (const key of Object.keys(pageRotations)) delete pageRotations[key]; refresh(); }
+  function rotatePage(page,degrees) {
+    if (!Number.isInteger(page) || page < 1 || (pageCount !== null && page > pageCount)) return;
+    const angle = ((pageRotations[page] || 0) + degrees + 360) % 360;
+    if (angle) pageRotations[page] = angle; else delete pageRotations[page];
+    changed();
+  }
   ['pageSize','pageOrientation','pageFit','pageMargin','marginMm','pageRotation'].forEach(name => id(name).addEventListener('change', changed));
   id('rotateAllLeft').addEventListener('click', () => rotateAll(-90));
   id('rotateAllRight').addEventListener('click', () => rotateAll(90));
@@ -72,6 +78,6 @@
     if (current.length !== sourceFiles.length || current.some((file,index) => file !== sourceFiles[index])) pageCount = null;
   });
   window.addEventListener('cometforge:busy', event => { busy = Boolean(event.detail); refresh(); });
-  window.CometForgeLayout = {getOptions,resetPageRotations,parsePages};
+  window.CometForgeLayout = {getOptions,resetPageRotations,parsePages,rotatePage};
   refresh();
 })();

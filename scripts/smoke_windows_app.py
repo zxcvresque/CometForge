@@ -114,7 +114,7 @@ def main():
             try:
                 result = json.loads(result_path.read_text(encoding="utf-8"))
                 assert result.get("version") == args.version, result
-                for requirement in ("success", "desktop_window", "export_success", "preview_success", "white_margins"):
+                for requirement in ("success", "desktop_window", "export_success", "preview_success", "live_preview_success", "white_margins"):
                     assert result.get(requirement) is True, f"Native smoke failed {requirement}: {result}"
                 ready = True
             except (OSError, ValueError, KeyError):

@@ -60,8 +60,32 @@ def exercise_pdf_engine(base_url):
     assert rendered.startswith(b'\x89PNG\r\n\x1a\n'), 'Bundled Ghostscript did not render'
     with Image.open(io.BytesIO(rendered)) as image:
         assert image.convert('RGB').getpixel((3, 3)) == (255, 255, 255), 'Unused page area must be white'
+    # Exercise the pre-export renderer from the packaged engine as well. This
+    # follows the same staged-source route used by the interactive source view.
+    request = urllib.request.Request(base_url + '/api/source', data=body,
+                                     headers={'Content-Type': f'multipart/form-data; boundary={boundary}'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        source_id = json.load(response)['source_id']
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        source = json.loads(get(f'/api/source/{source_id}'))
+        assert source['stage'] != 'error', source
+        if source['stage'] == 'ready':
+            break
+        time.sleep(.1)
+    else:
+        raise AssertionError('The live-preview source did not become ready')
+    request = urllib.request.Request(base_url + f'/api/source/{source_id}/render',
+        data=json.dumps({'page': 1, 'dpi': 72, 'options': options}).encode(),
+        headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(request, timeout=90) as response:
+        live_bytes = response.read()
+        assert response.headers['X-Preview-Page'] == '1'
+    with Image.open(io.BytesIO(live_bytes)) as live_image:
+        assert live_image.size == (595, 842), live_image.size
+        assert live_image.convert('RGB').getpixel((3, 3)) == (255, 255, 255)
     return dict(export_success=True, preview_success=True, white_margins=True,
-                target_met=True, output_bytes=result['max_part_bytes'])
+                live_preview_success=True, target_met=True, output_bytes=result['max_part_bytes'])
 
 
 def run(window, base_url, report_path, close_when_done=False):
