@@ -1,6 +1,6 @@
 /* Motion confirms actions while every pointer target stays in place. */
 :root{--motion-feedback:120ms;--motion-arrive:180ms;--motion-ease:cubic-bezier(.16,1,.3,1)}
-button,.btn,.popupTrigger,input,select,textarea{
+button,.btn,.popupTrigger,.sidebar .btn,.sidebar .popupTrigger,input,select,textarea{
   transition-property:background-color,border-color,color,box-shadow,outline-color;
   transition-duration:var(--motion-feedback);transition-timing-function:var(--motion-ease)
 }

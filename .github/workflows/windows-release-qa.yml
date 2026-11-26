@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Draft release tag to verify (for example v1.2.0)
+        description: Source version tag to build and verify (for example v1.2.0)
         required: true
         type: string
 
@@ -14,37 +14,52 @@ permissions:
 jobs:
   installed-app:
     runs-on: windows-latest
-    timeout-minutes: 20
-    # GitHub only exposes unpublished release assets to identities with push
-    # access. This job downloads a draft for testing; it never publishes it.
-    permissions:
-      contents: write
+    timeout-minutes: 35
     env:
-      GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ inputs.release_tag }}
+      PYTHONUTF8: '1'
     steps:
       - name: Check out release source
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release_tag }}
+          persist-credentials: false
+      - name: Validate source version
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'Expected a version tag such as v1.2.0' }
+          $source = Get-Content version.py -Raw
+          $expected = $env:RELEASE_TAG.Substring(1)
+          if ($source -notmatch ('__version__\s*=\s*"' + [regex]::Escape($expected) + '"')) { throw 'Source version does not match the requested tag' }
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install test dependencies
-        run: python -m pip install -r requirements-dev.txt
-      - name: Download draft installer
+      - name: Install test and build dependencies
+        run: python -m pip install -r requirements-dev.txt -r requirements-build.txt
+      - name: Prepare installer tools
         shell: pwsh
         run: |
-          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+$') { throw 'Expected a version tag such as v1.2.0' }
-          gh release download "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --pattern '*-Windows-x64-Setup.exe' --dir installer
-          if ($LASTEXITCODE -ne 0) { throw 'Draft installer download failed' }
-      - name: Install released application
+          $nsis = Join-Path ${env:ProgramFiles(x86)} 'NSIS'
+          if (!(Test-Path (Join-Path $nsis 'makensis.exe'))) {
+            choco install nsis --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed' }
+          }
+          $nsis | Out-File -FilePath $env:GITHUB_PATH -Append
+          (Join-Path $env:ProgramFiles '7-Zip') | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Build Windows installer from checked-out source
         shell: pwsh
         run: |
-          $installer = @(Get-ChildItem installer -Filter '*-Windows-x64-Setup.exe')
+          python packaging/build_windows.py *> windows-build.log
+          $buildExit = $LASTEXITCODE
+          Get-Content windows-build.log
+          if ($buildExit -ne 0) { throw "Windows installer build failed with $buildExit" }
+      - name: Install the built application
+        shell: pwsh
+        run: |
+          $installer = @(Get-ChildItem packaging/dist -Filter '*-Windows-x64-Setup.exe')
           if ($installer.Count -ne 1) { throw 'Expected exactly one Windows installer' }
           $setup = Start-Process -FilePath $installer[0].FullName -ArgumentList '/S' -Wait -PassThru
           if ($setup.ExitCode -ne 0) { throw "Installer failed with $($setup.ExitCode)" }
@@ -71,10 +86,27 @@ jobs:
           $version = $env:RELEASE_TAG.Substring(1)
           python scripts/smoke_windows_app.py --version "$version"
           if ($LASTEXITCODE -ne 0) { throw 'Installed desktop application smoke test failed' }
+      - name: Checksum the tested installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem packaging/dist -Filter '*-Windows-x64-Setup.exe'
+          $checksum = Get-FileHash $installer.FullName -Algorithm SHA256
+          "$($checksum.Hash.ToLower())  $($installer.Name)" | Out-File -Encoding ascii -FilePath "packaging/dist/SHA256SUMS-$env:RELEASE_TAG-Windows.txt"
+      - name: Retain the tested Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: tested-windows-installer-${{ inputs.release_tag }}
+          path: |
+            packaging/dist/*-Windows-x64-Setup.exe
+            packaging/dist/SHA256SUMS-*-Windows.txt
+          if-no-files-found: error
       - name: Retain desktop application diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: windows-desktop-application-log
-          path: ~/AppData/Local/CometForge/data/launcher.log
+          path: |
+            windows-build.log
+            ~/AppData/Local/CometForge/data/launcher.log
+            ~/AppData/Local/CometForge/data/desktop-smoke-result.json
           if-no-files-found: ignore
